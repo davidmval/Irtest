@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🔧 Test Dongle IR - Proyecto Ícaro</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a12;
+    --surface: rgba(255,255,255,0.06);
+    --surface-hover: rgba(255,255,255,0.10);
+    --border: rgba(255,255,255,0.10);
+    --text: #e8e8f0;
+    --text-dim: #8888a0;
+    --accent: #6c5ce7;
+    --accent-glow: rgba(108,92,231,0.4);
+    --green: #00e676;
+    --green-glow: rgba(0,230,118,0.3);
+    --red: #ff5252;
+    --red-glow: rgba(255,82,82,0.3);
+    --orange: #ffab40;
+    --radius: 16px;
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding: 16px;
+    padding-bottom: 40px;
+  }
+
+  /* Animated background blobs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.35;
+    z-index: 0;
+    animation: float 12s ease-in-out infinite alternate;
+  }
+  body::before {
+    width: 300px; height: 300px;
+    background: var(--accent);
+    top: -80px; left: -60px;
+  }
+  body::after {
+    width: 250px; height: 250px;
+    background: #e84393;
+    bottom: -60px; right: -60px;
+    animation-delay: -6s;
+  }
+  @keyframes float {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(30px, 20px) scale(1.15); }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .header .icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff, #a29bfe);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header p {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Glass Card */
+  .card {
+    background: var(--surface);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 14px;
+    transition: background 0.2s;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* Status indicator */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.3);
+    margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+  .status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+  .status-dot.disconnected { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
+  .status-dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green-glow); animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Buttons */
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.35; pointer-events: none; }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #a29bfe);
+    color: #fff;
+    box-shadow: 0 4px 20px var(--accent-glow);
+  }
+  .btn-primary:active { box-shadow: 0 2px 10px var(--accent-glow); }
+
+  .btn-send {
+    background: linear-gradient(135deg, #00b894, var(--green));
+    color: #0a0a12;
+    box-shadow: 0 4px 20px var(--green-glow);
+  }
+
+  .btn-disconnect {
+    background: rgba(255,82,82,0.15);
+    color: var(--red);
+    border: 1px solid rgba(255,82,82,0.25);
+  }
+
+  .btn-secondary {
+    background: var(--surface-hover);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* IR Signal buttons grid */
+  .ir-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .ir-grid .btn { font-size: 13px; padding: 12px 8px; }
+
+  /* Log area */
+  .log-area {
+    background: rgba(0,0,0,0.4);
+    border-radius: 12px;
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.7;
+    max-height: 200px;
+    overflow-y: auto;
+    color: var(--text-dim);
+    scroll-behavior: smooth;
+  }
+  .log-area .log-ok { color: var(--green); }
+  .log-area .log-err { color: var(--red); }
+  .log-area .log-warn { color: var(--orange); }
+  .log-area .log-info { color: #74b9ff; }
+
+  /* Tip banner */
+  .tip {
+    background: rgba(108,92,231,0.1);
+    border: 1px solid rgba(108,92,231,0.2);
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .tip strong { color: var(--text); }
+  .tip .emoji { font-size: 16px; }
+
+  /* Responsive */
+  @media (min-width: 500px) {
+    body { padding: 32px; }
+    .header h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <span class="icon">📡</span>
+    <h1>Test Dongle IR</h1>
+    <p>Proyecto Ícaro — Verificación de hardware</p>
+  </div>
+
+  <!-- Connection Card -->
+  <div class="card">
+    <div class="card-title"><span class="dot"></span> Conexión USB Serial</div>
+    <div class="status-bar">
+      <span class="status-dot disconnected" id="statusDot"></span>
+      <span id="statusText">Desconectado</span>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="btnConnect" onclick="toggleConnection()">
+        🔌 Conectar Dongle
+      </button>
+    </div>
+  </div>
+
+  <!-- Test Signals Card -->
+  <div class="card">
+    <div class="card-title"><span class="dot"></span> Señales de Prueba</div>
+    <p style="font-size:13px; color:var(--text-dim); margin-bottom:12px;">
+      Pulsa un botón y mira el LED IR con la cámara de otro móvil. Si parpadea, ¡el dongle funciona!
+    </p>
+    <div class="ir-grid">
+      <button class="btn btn-send" disabled id="b1" onclick="sendIR('LG Power', [0x20,0xDF,0x10,0xEF])">
+        ⚡ LG Power
+      </button>
+      <button class="btn btn-send" disabled id="b2" onclick="sendIR('Samsung Power', [0xE0,0xE0,0x40,0xBF])">
+        ⚡ Samsung Power
+      </button>
+      <button class="btn btn-send" disabled id="b3" onclick="sendIR('Sony Power', [0x01,0x00,0x95,0x00])">
+        ⚡ Sony Power
+      </button>
+      <button class="btn btn-send" disabled id="b4" onclick="sendIR('Test 0xFF', [0xFF,0xFF,0xFF,0xFF])">
+        🔬 Ráfaga Max
+      </button>
+    </div>
+
+    <div style="margin-top:12px;">
+      <button class="btn btn-secondary" disabled id="b5" onclick="sendCustom()">
+        ✏️ Enviar código personalizado (hex)
+      </button>
+    </div>
+  </div>
+
+  <!-- RX Test Card -->
+  <div class="card">
+    <div class="card-title"><span class="dot"></span> Receptor (RX)</div>
+    <p style="font-size:13px; color:var(--text-dim); margin-bottom:12px;">
+      Apunta un mando real al sensor VS1838B y pulsa un botón. Si llegan datos, el receptor funciona.
+    </p>
+    <button class="btn btn-secondary" disabled id="btnRx" onclick="toggleRx()">
+      👂 Escuchar señal IR
+    </button>
+  </div>
+
+  <!-- Log Card -->
+  <div class="card">
+    <div class="card-title"><span class="dot"></span> Log de Actividad</div>
+    <div class="log-area" id="logArea">
+      <div class="log-info">→ Listo. Conecta el dongle para empezar.</div>
+    </div>
+  </div>
+
+  <!-- Tips -->
+  <div class="tip">
+    <span class="emoji">💡</span> <strong>Tip:</strong> El LED infrarrojo es invisible al ojo, pero se ve como una luz violeta/blanca a través de la cámara frontal de cualquier móvil. Usa la de un compañero para comprobar.
+  </div>
+
+</div>
+
+<script>
+  let port = null;
+  let writer = null;
+  let reader = null;
+  let rxActive = false;
+  const logArea = document.getElementById('logArea');
+  const irButtons = ['b1','b2','b3','b4','b5','btnRx'];
+
+  function log(msg, type = '') {
+    const line = document.createElement('div');
+    if (type) line.className = `log-${type}`;
+    const now = new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    line.textContent = `[${now}] ${msg}`;
+    logArea.appendChild(line);
+    logArea.scrollTop = logArea.scrollHeight;
+  }
+
+  function setConnected(connected) {
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    const btn = document.getElementById('btnConnect');
+
+    if (connected) {
+      dot.className = 'status-dot connected';
+      text.textContent = 'Conectado ✓';
+      btn.textContent = '🔌 Desconectar';
+      btn.className = 'btn btn-disconnect';
+      irButtons.forEach(id => document.getElementById(id).disabled = false);
+    } else {
+      dot.className = 'status-dot disconnected';
+      text.textContent = 'Desconectado';
+      btn.textContent = '🔌 Conectar Dongle';
+      btn.className = 'btn btn-primary';
+      irButtons.forEach(id => document.getElementById(id).disabled = true);
+    }
+  }
+
+  async function toggleConnection() {
+    if (port) {
+      await disconnect();
+    } else {
+      await connect();
+    }
+  }
+
+  async function connect() {
+    if (!('serial' in navigator)) {
+      log('❌ Web Serial API no soportada. Usa Chrome o Edge en Android.', 'err');
+      alert('Tu navegador no soporta Web Serial API.\n\nNecesitas Chrome o Edge en Android.');
+      return;
+    }
+
+    try {
+      log('Solicitando acceso al puerto USB...', 'info');
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 38400 });
+      writer = port.writable.getWriter();
+      log('✅ Dongle conectado a 38400 baud', 'ok');
+      setConnected(true);
+    } catch (e) {
+      log(`❌ Error: ${e.message}`, 'err');
+      port = null;
+      writer = null;
+    }
+  }
+
+  async function disconnect() {
+    try {
+      if (rxActive) await stopRx();
+      if (writer) { writer.releaseLock(); writer = null; }
+      if (port) { await port.close(); port = null; }
+      log('🔌 Desconectado', 'warn');
+      setConnected(false);
+    } catch (e) {
+      log(`Error al desconectar: ${e.message}`, 'err');
+    }
+  }
+
+  async function sendIR(name, bytes) {
+    if (!writer) return;
+    try {
+      const data = new Uint8Array(bytes);
+      await writer.write(data);
+      log(`📤 Enviado ${name}: [${bytes.map(b=>'0x'+b.toString(16).toUpperCase().padStart(2,'0')).join(', ')}]`, 'ok');
+    } catch (e) {
+      log(`❌ Error al enviar: ${e.message}`, 'err');
+    }
+  }
+
+  async function sendCustom() {
+    const input = prompt('Escribe los bytes en hex separados por espacios.\nEjemplo: 20 DF 10 EF');
+    if (!input) return;
+    try {
+      const bytes = input.trim().split(/[\s,]+/).map(h => parseInt(h, 16));
+      if (bytes.some(isNaN)) throw new Error('Formato inválido');
+      await sendIR('Custom', bytes);
+    } catch (e) {
+      log(`❌ ${e.message}. Usa formato: 20 DF 10 EF`, 'err');
+    }
+  }
+
+  async function toggleRx() {
+    if (rxActive) {
+      await stopRx();
+    } else {
+      await startRx();
+    }
+  }
+
+  async function startRx() {
+    if (!port || !port.readable) return;
+    rxActive = true;
+    document.getElementById('btnRx').textContent = '🛑 Dejar de escuchar';
+    document.getElementById('btnRx').className = 'btn btn-disconnect';
+    log('👂 Escuchando señal IR en RX... Apunta un mando al sensor.', 'info');
+
+    try {
+      reader = port.readable.getReader();
+      while (rxActive) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value && value.length > 0) {
+          const hex = Array.from(value).map(b => '0x'+b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+          log(`📥 Recibido (${value.length} bytes): ${hex}`, 'ok');
+        }
+      }
+    } catch (e) {
+      if (rxActive) log(`Error leyendo: ${e.message}`, 'err');
+    }
+  }
+
+  async function stopRx() {
+    rxActive = false;
+    if (reader) {
+      try { await reader.cancel(); } catch(e) {}
+      reader.releaseLock();
+      reader = null;
+    }
+    document.getElementById('btnRx').textContent = '👂 Escuchar señal IR';
+    document.getElementById('btnRx').className = 'btn btn-secondary';
+    log('⏹ Escucha detenida.', 'warn');
+  }
+
+  // Cleanup on page close
+  window.addEventListener('beforeunload', () => {
+    if (port) disconnect();
+  });
+</script>
+
+</body>
+</html>
