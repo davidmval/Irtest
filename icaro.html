@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Proyecto Ícaro — Mando Universal IR</title>
+<link rel="manifest" crossorigin="use-credentials">
+<meta name="theme-color" content="#08080f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #08080f;
+  --surface: rgba(255,255,255,0.05);
+  --surface-2: rgba(255,255,255,0.08);
+  --surface-3: rgba(255,255,255,0.12);
+  --border: rgba(255,255,255,0.08);
+  --border-2: rgba(255,255,255,0.14);
+  --text: #eaeaf2;
+  --text-dim: #7a7a96;
+  --text-mid: #a0a0b8;
+  --accent: #6366f1;
+  --accent-2: #818cf8;
+  --accent-glow: rgba(99,102,241,0.35);
+  --green: #34d399;
+  --green-glow: rgba(52,211,153,0.25);
+  --red: #f87171;
+  --red-glow: rgba(248,113,113,0.25);
+  --orange: #fbbf24;
+  --cyan: #22d3ee;
+  --radius: 18px;
+  --radius-sm: 12px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* === BACKGROUND ATMOSPHERE === */
+.bg-orbs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.bg-orbs span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.3;
+}
+.bg-orbs .o1 { width: 320px; height: 320px; background: var(--accent); top: -100px; left: -80px; animation: orbFloat 14s ease-in-out infinite alternate; }
+.bg-orbs .o2 { width: 260px; height: 260px; background: #e11d48; bottom: 10%; right: -60px; animation: orbFloat 18s ease-in-out infinite alternate-reverse; }
+.bg-orbs .o3 { width: 200px; height: 200px; background: var(--cyan); top: 40%; left: 50%; animation: orbFloat 12s ease-in-out infinite alternate; opacity: 0.15; }
+@keyframes orbFloat {
+  0% { transform: translate(0,0) scale(1); }
+  100% { transform: translate(25px,30px) scale(1.1); }
+}
+
+/* === LAYOUT === */
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 16px 16px 100px;
+}
+
+/* === NAV TABS === */
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(8,8,15,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom, 8px);
+}
+.nav-btn {
+  flex: 1;
+  max-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 4px 8px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: 'Outfit', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.nav-btn .nav-icon { font-size: 22px; }
+.nav-btn.active { color: var(--accent-2); }
+.nav-btn:active { transform: scale(0.95); }
+
+/* === HEADER === */
+.header {
+  text-align: center;
+  padding: 16px 0 20px;
+}
+.header h1 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #fff 0%, var(--accent-2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header .sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+/* === CONNECTION BAR === */
+.conn-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.conn-bar:active { background: var(--surface-2); }
+.conn-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.conn-dot.off { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
+.conn-dot.on { background: var(--green); box-shadow: 0 0 8px var(--green-glow); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.conn-label { font-size: 13px; font-weight: 500; flex: 1; }
+.conn-action {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-2);
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(99,102,241,0.12);
+  border: 1px solid rgba(99,102,241,0.2);
+}
+
+/* === PAGES === */
+.page { display: none; }
+.page.active { display: block; animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* === CARDS === */
+.card {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.card-head {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-head .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+/* === BRAND SELECTOR === */
+.brand-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.brand-chip {
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text-mid);
+}
+.brand-chip:active { transform: scale(0.96); }
+.brand-chip.active {
+  background: rgba(99,102,241,0.15);
+  border-color: rgba(99,102,241,0.4);
+  color: var(--accent-2);
+  box-shadow: 0 0 16px rgba(99,102,241,0.15);
+}
+
+/* === REMOTE BUTTONS === */
+.remote-pad {
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.remote-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.r-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-2);
+  background: var(--surface-3);
+  color: var(--text);
+  border-radius: 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+.r-btn:active {
+  transform: scale(0.93);
+  background: rgba(99,102,241,0.2);
+  border-color: var(--accent);
+}
+.r-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+.r-btn.power {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(248,113,113,0.12);
+  border-color: rgba(248,113,113,0.3);
+  color: var(--red);
+  font-size: 24px;
+}
+.r-btn.power:active {
+  background: rgba(248,113,113,0.3);
+}
+
+.r-btn.wide { flex: 1; height: 50px; }
+.r-btn.sq { width: 58px; height: 50px; }
+.r-btn.circle { width: 50px; height: 50px; border-radius: 50%; font-size: 18px; }
+
+.r-btn .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  transform: scale(0);
+  animation: ripple 0.5s ease-out;
+  pointer-events: none;
+}
+@keyframes ripple { to { transform: scale(3); opacity: 0; } }
+
+/* Navigation pad */
+.dpad {
+  display: grid;
+  grid-template-areas:
+    ". up ."
+    "left ok right"
+    ". down .";
+  grid-template-columns: 50px 60px 50px;
+  grid-template-rows: 50px 60px 50px;
+  gap: 4px;
+}
+.dpad .r-btn { width: 100%; height: 100%; border-radius: 14px; }
+.dpad .r-btn[data-dir="up"] { grid-area: up; }
+.dpad .r-btn[data-dir="down"] { grid-area: down; }
+.dpad .r-btn[data-dir="left"] { grid-area: left; }
+.dpad .r-btn[data-dir="right"] { grid-area: right; }
+.dpad .r-btn.ok { grid-area: ok; border-radius: 50%; background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.3); color: var(--accent-2); font-weight: 700; }
+
+.section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-align: center;
+  width: 100%;
+}
+
+/* === CLONE/LEARN PAGE === */
+.clone-status {
+  text-align: center;
+  padding: 30px 16px;
+}
+.clone-icon { font-size: 56px; margin-bottom: 12px; }
+.clone-status h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.clone-status p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+/* === SAVED REMOTES PAGE === */
+.saved-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.saved-item:active { background: var(--surface-3); }
+.saved-icon { font-size: 28px; }
+.saved-info { flex: 1; }
+.saved-info .name { font-size: 14px; font-weight: 600; }
+.saved-info .detail { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.saved-actions { display: flex; gap: 8px; }
+.saved-actions button {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-dim);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 13px; line-height: 1.5; }
+
+/* === GENERAL BUTTONS === */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.35; pointer-events: none; }
+.btn-accent {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+.btn-green {
+  background: linear-gradient(135deg, #059669, var(--green));
+  color: #022c22;
+  box-shadow: 0 4px 20px var(--green-glow);
+}
+.btn-ghost {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-red {
+  background: rgba(248,113,113,0.12);
+  color: var(--red);
+  border: 1px solid rgba(248,113,113,0.2);
+}
+
+/* === LOG === */
+.log-area {
+  background: rgba(0,0,0,0.35);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  max-height: 160px;
+  overflow-y: auto;
+  color: var(--text-dim);
+}
+.log-area .log-ok { color: var(--green); }
+.log-area .log-err { color: var(--red); }
+.log-area .log-warn { color: var(--orange); }
+.log-area .log-info { color: var(--cyan); }
+
+/* === TIP BOX === */
+.tip-box {
+  background: rgba(99,102,241,0.08);
+  border: 1px solid rgba(99,102,241,0.15);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.tip-box strong { color: var(--text); }
+
+/* === NUMBER PAD === */
+.numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.numpad .r-btn { height: 48px; border-radius: var(--radius-sm); }
+
+/* === TOAST === */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface-3);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  z-index: 200;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="bg-orbs">
+  <span class="o1"></span>
+  <span class="o2"></span>
+  <span class="o3"></span>
+</div>
+
+<div class="app">
+  <div class="header">
+    <h1>Proyecto Ícaro</h1>
+    <div class="sub">Mando Universal IR · WebUSB</div>
+  </div>
+
+  <!-- Connection Bar -->
+  <div class="conn-bar" onclick="toggleConnection()">
+    <span class="conn-dot off" id="connDot"></span>
+    <span class="conn-label" id="connLabel">Dongle desconectado</span>
+    <span class="conn-action" id="connAction">Conectar</span>
+  </div>
+
+  <!-- ==================== PAGE: REMOTE ==================== -->
+  <div class="page active" id="pageRemote">
+
+    <div class="card">
+      <div class="card-head"><span class="dot"></span> Selecciona marca de TV</div>
+      <div class="brand-grid" id="brandGrid"></div>
+    </div>
+
+    <div class="remote-pad" id="remotePad">
+      <!-- Power -->
+      <div class="remote-row">
+        <button class="r-btn power" data-cmd="power" disabled title="Power">⏻</button>
+      </div>
+
+      <div class="section-label">— Volumen / Canales —</div>
+
+      <div class="remote-row">
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;flex:1">
+          <button class="r-btn wide" data-cmd="vol_up" disabled>🔊 Vol +</button>
+          <button class="r-btn wide" data-cmd="vol_down" disabled>🔉 Vol −</button>
+        </div>
+        <button class="r-btn circle" data-cmd="mute" disabled title="Mute">🔇</button>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;flex:1">
+          <button class="r-btn wide" data-cmd="ch_up" disabled>CH ▲</button>
+          <button class="r-btn wide" data-cmd="ch_down" disabled>CH ▼</button>
+        </div>
+      </div>
+
+      <div class="section-label">— Navegación —</div>
+
+      <div class="dpad">
+        <button class="r-btn" data-dir="up" data-cmd="up" disabled>▲</button>
+        <button class="r-btn" data-dir="left" data-cmd="left" disabled>◀</button>
+        <button class="r-btn ok" data-cmd="ok" disabled>OK</button>
+        <button class="r-btn" data-dir="right" data-cmd="right" disabled>▶</button>
+        <button class="r-btn" data-dir="down" data-cmd="down" disabled>▼</button>
+      </div>
+
+      <div class="remote-row" style="gap:8px">
+        <button class="r-btn wide" data-cmd="source" disabled>📺 Source</button>
+        <button class="r-btn wide" data-cmd="menu" disabled>☰ Menú</button>
+        <button class="r-btn wide" data-cmd="back" disabled>↩ Volver</button>
+      </div>
+
+      <div class="section-label">— Numérico —</div>
+
+      <div class="numpad">
+        <button class="r-btn" data-cmd="n1" disabled>1</button>
+        <button class="r-btn" data-cmd="n2" disabled>2</button>
+        <button class="r-btn" data-cmd="n3" disabled>3</button>
+        <button class="r-btn" data-cmd="n4" disabled>4</button>
+        <button class="r-btn" data-cmd="n5" disabled>5</button>
+        <button class="r-btn" data-cmd="n6" disabled>6</button>
+        <button class="r-btn" data-cmd="n7" disabled>7</button>
+        <button class="r-btn" data-cmd="n8" disabled>8</button>
+        <button class="r-btn" data-cmd="n9" disabled>9</button>
+        <button class="r-btn" data-cmd="info" disabled>ℹ️</button>
+        <button class="r-btn" data-cmd="n0" disabled>0</button>
+        <button class="r-btn" data-cmd="exit" disabled>✕</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ==================== PAGE: CLONE ==================== -->
+  <div class="page" id="pageClone">
+    <div class="card">
+      <div class="card-head"><span class="dot"></span> Clonar Mando Real</div>
+      <div class="clone-status" id="cloneStatus">
+        <div class="clone-icon">📡</div>
+        <h3>Modo Aprendizaje</h3>
+        <p>Apunta un mando real al sensor VS1838B del dongle y pulsa cualquier botón. La señal capturada se guardará para usarla después.</p>
+      </div>
+      <div style="margin-bottom:12px">
+        <input type="text" id="cloneName" placeholder="Nombre (ej: Tele del salón)" style="
+          width:100%;padding:12px 16px;border-radius:var(--radius-sm);
+          background:var(--surface-2);border:1px solid var(--border);
+          color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;
+          outline:none;
+        ">
+      </div>
+      <div style="margin-bottom:12px">
+        <input type="text" id="cloneButton" placeholder="Botón (ej: Power, Vol+)" style="
+          width:100%;padding:12px 16px;border-radius:var(--radius-sm);
+          background:var(--surface-2);border:1px solid var(--border);
+          color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;
+          outline:none;
+        ">
+      </div>
+      <button class="btn btn-green" id="btnClone" disabled onclick="startCloning()">
+        👂 Capturar señal IR
+      </button>
+      <div style="margin-top:12px">
+        <button class="btn btn-ghost" id="btnStopClone" style="display:none" onclick="stopCloning()">
+          🛑 Detener captura
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="dot"></span> Última captura</div>
+      <div class="log-area" id="cloneLog">
+        <div class="log-info">→ Esperando captura...</div>
+      </div>
+    </div>
+
+    <div class="tip-box">
+      💡 <strong>Tip:</strong> Para clonar un mando entero, repite el proceso para cada botón (Power, Vol+, Vol−, etc.) usando el mismo nombre de dispositivo pero cambiando el nombre del botón.
+    </div>
+  </div>
+
+  <!-- ==================== PAGE: SAVED ==================== -->
+  <div class="page" id="pageSaved">
+    <div class="card">
+      <div class="card-head"><span class="dot"></span> Mandos Guardados</div>
+      <div id="savedList">
+        <div class="empty-state">
+          <div class="empty-icon">📦</div>
+          <p>Aún no hay señales guardadas.<br>Ve a "Clonar" para capturar tu primer mando.</p>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-red" onclick="clearAllSaved()" id="btnClearAll" style="display:none">
+      🗑️ Borrar todos los mandos guardados
+    </button>
+  </div>
+
+  <!-- ==================== PAGE: LOG ==================== -->
+  <div class="page" id="pageLog">
+    <div class="card">
+      <div class="card-head"><span class="dot"></span> Log de Actividad</div>
+      <div class="log-area" id="logArea" style="max-height:50vh">
+        <div class="log-info">→ Proyecto Ícaro · Mando Universal IR</div>
+      </div>
+    </div>
+    <div class="tip-box">
+      💡 <strong>Importante:</strong> El LED IR es invisible al ojo humano. Para verificar que emite, míralo a través de la cámara frontal de otro móvil — se verá como una luz violeta/blanca.
+    </div>
+  </div>
+
+</div>
+
+<!-- Nav Bar -->
+<nav class="nav-bar">
+  <button class="nav-btn active" onclick="showPage('pageRemote',this)">
+    <span class="nav-icon">📺</span>
+    Mando
+  </button>
+  <button class="nav-btn" onclick="showPage('pageClone',this)">
+    <span class="nav-icon">📡</span>
+    Clonar
+  </button>
+  <button class="nav-btn" onclick="showPage('pageSaved',this)">
+    <span class="nav-icon">💾</span>
+    Guardados
+  </button>
+  <button class="nav-btn" onclick="showPage('pageLog',this)">
+    <span class="nav-icon">📋</span>
+    Log
+  </button>
+</nav>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// IR CODE DATABASE — NEC 32-bit hex codes (4 bytes each)
+// Format: 0xAABBCCDD → [0xAA, 0xBB, 0xCC, 0xDD]
+// ============================================================
+
+const IR_DB = {
+  samsung: {
+    name: 'Samsung',
+    // Samsung protocol: prefix 0xE0E0
+    power:    [0xE0,0xE0,0x40,0xBF],
+    vol_up:   [0xE0,0xE0,0xE0,0x1F],
+    vol_down: [0xE0,0xE0,0xD0,0x2F],
+    ch_up:    [0xE0,0xE0,0x48,0xB7],
+    ch_down:  [0xE0,0xE0,0x08,0xF7],
+    mute:     [0xE0,0xE0,0xF0,0x0F],
+    source:   [0xE0,0xE0,0x80,0x7F],
+    menu:     [0xE0,0xE0,0x58,0xA7],
+    ok:       [0xE0,0xE0,0x16,0xE9],
+    up:       [0xE0,0xE0,0x06,0xF9],
+    down:     [0xE0,0xE0,0x86,0x79],
+    left:     [0xE0,0xE0,0xA6,0x59],
+    right:    [0xE0,0xE0,0x46,0xB9],
+    back:     [0xE0,0xE0,0x1A,0xE5],
+    exit:     [0xE0,0xE0,0xB4,0x4B],
+    info:     [0xE0,0xE0,0xF8,0x07],
+    n0:       [0xE0,0xE0,0x88,0x77],
+    n1:       [0xE0,0xE0,0x20,0xDF],
+    n2:       [0xE0,0xE0,0xA0,0x5F],
+    n3:       [0xE0,0xE0,0x60,0x9F],
+    n4:       [0xE0,0xE0,0x10,0xEF],
+    n5:       [0xE0,0xE0,0x90,0x6F],
+    n6:       [0xE0,0xE0,0x50,0xAF],
+    n7:       [0xE0,0xE0,0x30,0xCF],
+    n8:       [0xE0,0xE0,0xB0,0x4F],
+    n9:       [0xE0,0xE0,0x70,0x8F],
+  },
+  lg: {
+    name: 'LG',
+    // LG NEC protocol: prefix 0x20DF
+    power:    [0x20,0xDF,0x10,0xEF],
+    vol_up:   [0x20,0xDF,0x40,0xBF],
+    vol_down: [0x20,0xDF,0xC0,0x3F],
+    ch_up:    [0x20,0xDF,0x00,0xFF],
+    ch_down:  [0x20,0xDF,0x80,0x7F],
+    mute:     [0x20,0xDF,0x90,0x6F],
+    source:   [0x20,0xDF,0xD0,0x2F],
+    menu:     [0x20,0xDF,0xC5,0x3A],
+    ok:       [0x20,0xDF,0x22,0xDD],
+    up:       [0x20,0xDF,0x02,0xFD],
+    down:     [0x20,0xDF,0x82,0x7D],
+    left:     [0x20,0xDF,0xE0,0x1F],
+    right:    [0x20,0xDF,0x60,0x9F],
+    back:     [0x20,0xDF,0x14,0xEB],
+    exit:     [0x20,0xDF,0xDA,0x25],
+    info:     [0x20,0xDF,0x55,0xAA],
+    n0:       [0x20,0xDF,0x08,0xF7],
+    n1:       [0x20,0xDF,0x88,0x77],
+    n2:       [0x20,0xDF,0x48,0xB7],
+    n3:       [0x20,0xDF,0xC8,0x37],
+    n4:       [0x20,0xDF,0x28,0xD7],
+    n5:       [0x20,0xDF,0xA8,0x57],
+    n6:       [0x20,0xDF,0x68,0x97],
+    n7:       [0x20,0xDF,0xE8,0x17],
+    n8:       [0x20,0xDF,0x18,0xE7],
+    n9:       [0x20,0xDF,0x98,0x67],
+  },
+  sony: {
+    name: 'Sony',
+    // Sony SIRC codes (12-bit, padded to 4 bytes for our system)
+    power:    [0xA9,0x00,0x00,0x15],
+    vol_up:   [0x49,0x00,0x00,0x12],
+    vol_down: [0xC9,0x00,0x00,0x13],
+    ch_up:    [0x09,0x00,0x00,0x10],
+    ch_down:  [0x89,0x00,0x00,0x11],
+    mute:     [0x29,0x00,0x00,0x14],
+    source:   [0xA5,0x00,0x00,0x25],
+    menu:     [0x70,0x00,0x00,0x60],
+    ok:       [0xA5,0x00,0x00,0x65],
+    up:       [0x2F,0x00,0x00,0x74],
+    down:     [0xAF,0x00,0x00,0x75],
+    left:     [0x2D,0x00,0x00,0x34],
+    right:    [0xCD,0x00,0x00,0x33],
+    back:     [0xA5,0x00,0x00,0x23],
+    exit:     [0xA5,0x00,0x00,0x23],
+    info:     [0x5D,0x00,0x00,0x3A],
+    n0:       [0x09,0x00,0x00,0x09],
+    n1:       [0x89,0x00,0x00,0x00],
+    n2:       [0x49,0x00,0x00,0x01],
+    n3:       [0xC9,0x00,0x00,0x02],
+    n4:       [0x29,0x00,0x00,0x03],
+    n5:       [0xA9,0x00,0x00,0x04],
+    n6:       [0x69,0x00,0x00,0x05],
+    n7:       [0xE9,0x00,0x00,0x06],
+    n8:       [0x19,0x00,0x00,0x07],
+    n9:       [0x99,0x00,0x00,0x08],
+  },
+  philips: {
+    name: 'Philips',
+    // Philips RC6 (common codes)
+    power:    [0x0C,0x00,0x00,0x0C],
+    vol_up:   [0x0C,0x00,0x00,0x10],
+    vol_down: [0x0C,0x00,0x00,0x11],
+    ch_up:    [0x0C,0x00,0x00,0x20],
+    ch_down:  [0x0C,0x00,0x00,0x21],
+    mute:     [0x0C,0x00,0x00,0x0D],
+    source:   [0x0C,0x00,0x00,0x38],
+    menu:     [0x0C,0x00,0x00,0x54],
+    ok:       [0x0C,0x00,0x00,0x5C],
+    up:       [0x0C,0x00,0x00,0x58],
+    down:     [0x0C,0x00,0x00,0x59],
+    left:     [0x0C,0x00,0x00,0x5A],
+    right:    [0x0C,0x00,0x00,0x5B],
+    back:     [0x0C,0x00,0x00,0x0A],
+    exit:     [0x0C,0x00,0x00,0x0A],
+    info:     [0x0C,0x00,0x00,0x0F],
+    n0:       [0x0C,0x00,0x00,0x00],
+    n1:       [0x0C,0x00,0x00,0x01],
+    n2:       [0x0C,0x00,0x00,0x02],
+    n3:       [0x0C,0x00,0x00,0x03],
+    n4:       [0x0C,0x00,0x00,0x04],
+    n5:       [0x0C,0x00,0x00,0x05],
+    n6:       [0x0C,0x00,0x00,0x06],
+    n7:       [0x0C,0x00,0x00,0x07],
+    n8:       [0x0C,0x00,0x00,0x08],
+    n9:       [0x0C,0x00,0x00,0x09],
+  },
+  panasonic: {
+    name: 'Panasonic',
+    // Panasonic (48-bit, using first 4 significant bytes)
+    power:    [0x40,0x04,0x00,0xBD],
+    vol_up:   [0x40,0x04,0x00,0x20],
+    vol_down: [0x40,0x04,0x00,0xA0],
+    ch_up:    [0x40,0x04,0x00,0x2C],
+    ch_down:  [0x40,0x04,0x00,0xAC],
+    mute:     [0x40,0x04,0x00,0x30],
+    source:   [0x40,0x04,0x00,0xA0],
+    menu:     [0x40,0x04,0x00,0x06],
+    ok:       [0x40,0x04,0x00,0x49],
+    up:       [0x40,0x04,0x00,0x52],
+    down:     [0x40,0x04,0x00,0xD2],
+    left:     [0x40,0x04,0x00,0x72],
+    right:    [0x40,0x04,0x00,0xF2],
+    back:     [0x40,0x04,0x00,0x2B],
+    exit:     [0x40,0x04,0x00,0xCB],
+    info:     [0x40,0x04,0x00,0x39],
+    n0:       [0x40,0x04,0x00,0x09],
+    n1:       [0x40,0x04,0x00,0x89],
+    n2:       [0x40,0x04,0x00,0x49],
+    n3:       [0x40,0x04,0x00,0xC9],
+    n4:       [0x40,0x04,0x00,0x29],
+    n5:       [0x40,0x04,0x00,0xA9],
+    n6:       [0x40,0x04,0x00,0x69],
+    n7:       [0x40,0x04,0x00,0xE9],
+    n8:       [0x40,0x04,0x00,0x19],
+    n9:       [0x40,0x04,0x00,0x99],
+  },
+  hisense: {
+    name: 'Hisense',
+    // Hisense NEC codes (common)
+    power:    [0x00,0xBF,0x40,0xBF],
+    vol_up:   [0x00,0xBF,0x40,0x1F],
+    vol_down: [0x00,0xBF,0xC0,0x1F],
+    ch_up:    [0x00,0xBF,0x00,0x5F],
+    ch_down:  [0x00,0xBF,0x80,0x5F],
+    mute:     [0x00,0xBF,0xC0,0x3F],
+    source:   [0x00,0xBF,0x00,0x3F],
+    menu:     [0x00,0xBF,0x80,0x3F],
+    ok:       [0x00,0xBF,0xD8,0x27],
+    up:       [0x00,0xBF,0x18,0x67],
+    down:     [0x00,0xBF,0x98,0x67],
+    left:     [0x00,0xBF,0x58,0xA7],
+    right:    [0x00,0xBF,0xD8,0xA7],
+    back:     [0x00,0xBF,0x48,0xB7],
+    exit:     [0x00,0xBF,0xC8,0x37],
+    info:     [0x00,0xBF,0x30,0xCF],
+    n0:       [0x00,0xBF,0x00,0xFF],
+    n1:       [0x00,0xBF,0x80,0x7F],
+    n2:       [0x00,0xBF,0x40,0xBF],
+    n3:       [0x00,0xBF,0xC0,0x3F],
+    n4:       [0x00,0xBF,0x20,0xDF],
+    n5:       [0x00,0xBF,0xA0,0x5F],
+    n6:       [0x00,0xBF,0x60,0x9F],
+    n7:       [0x00,0xBF,0xE0,0x1F],
+    n8:       [0x00,0xBF,0x10,0xEF],
+    n9:       [0x00,0xBF,0x90,0x6F],
+  },
+  tcl: {
+    name: 'TCL/Roku',
+    // TCL Roku NEC codes
+    power:    [0x57,0xE3,0x40,0xBF],
+    vol_up:   [0x57,0xE3,0xE0,0x1F],
+    vol_down: [0x57,0xE3,0xD0,0x2F],
+    ch_up:    [0x57,0xE3,0x48,0xB7],
+    ch_down:  [0x57,0xE3,0x08,0xF7],
+    mute:     [0x57,0xE3,0xF0,0x0F],
+    source:   [0x57,0xE3,0x80,0x7F],
+    menu:     [0x57,0xE3,0x58,0xA7],
+    ok:       [0x57,0xE3,0x16,0xE9],
+    up:       [0x57,0xE3,0x06,0xF9],
+    down:     [0x57,0xE3,0x86,0x79],
+    left:     [0x57,0xE3,0xA6,0x59],
+    right:    [0x57,0xE3,0x46,0xB9],
+    back:     [0x57,0xE3,0x1A,0xE5],
+    exit:     [0x57,0xE3,0xB4,0x4B],
+    info:     [0x57,0xE3,0xF8,0x07],
+    n0:       [0x57,0xE3,0x88,0x77],
+    n1:       [0x57,0xE3,0x20,0xDF],
+    n2:       [0x57,0xE3,0xA0,0x5F],
+    n3:       [0x57,0xE3,0x60,0x9F],
+    n4:       [0x57,0xE3,0x10,0xEF],
+    n5:       [0x57,0xE3,0x90,0x6F],
+    n6:       [0x57,0xE3,0x50,0xAF],
+    n7:       [0x57,0xE3,0x30,0xCF],
+    n8:       [0x57,0xE3,0xB0,0x4F],
+    n9:       [0x57,0xE3,0x70,0x8F],
+  },
+  toshiba: {
+    name: 'Toshiba',
+    // Toshiba NEC codes
+    power:    [0x02,0xFD,0x48,0xB7],
+    vol_up:   [0x02,0xFD,0x58,0xA7],
+    vol_down: [0x02,0xFD,0x78,0x87],
+    ch_up:    [0x02,0xFD,0xD8,0x27],
+    ch_down:  [0x02,0xFD,0xF8,0x07],
+    mute:     [0x02,0xFD,0x08,0xF7],
+    source:   [0x02,0xFD,0x28,0xD7],
+    menu:     [0x02,0xFD,0xC8,0x37],
+    ok:       [0x02,0xFD,0x98,0x67],
+    up:       [0x02,0xFD,0x18,0xE7],
+    down:     [0x02,0xFD,0x9A,0x65],
+    left:     [0x02,0xFD,0xDA,0x25],
+    right:    [0x02,0xFD,0x5A,0xA5],
+    back:     [0x02,0xFD,0xA8,0x57],
+    exit:     [0x02,0xFD,0xA8,0x57],
+    info:     [0x02,0xFD,0xE8,0x17],
+    n0:       [0x02,0xFD,0x00,0xFF],
+    n1:       [0x02,0xFD,0x80,0x7F],
+    n2:       [0x02,0xFD,0x40,0xBF],
+    n3:       [0x02,0xFD,0xC0,0x3F],
+    n4:       [0x02,0xFD,0x20,0xDF],
+    n5:       [0x02,0xFD,0xA0,0x5F],
+    n6:       [0x02,0xFD,0x60,0x9F],
+    n7:       [0x02,0xFD,0xE0,0x1F],
+    n8:       [0x02,0xFD,0x10,0xEF],
+    n9:       [0x02,0xFD,0x90,0x6F],
+  }
+};
+
+// ============================================================
+// WebUSB CH340G Driver
+// ============================================================
+
+const CH340_VID = 0x1A86;
+const CH340_PID = 0x7523;
+const CH340_REQ_WRITE_REG = 0x9A;
+const CH340_REQ_SERIAL_INIT = 0xA1;
+const CH340_REQ_MODEM_CTRL = 0xA4;
+const CH340_REG_BPS_PRE = 0x2518;
+const CH340_REG_BPS_DIV = 0x0F2C;
+const CH340_REG_LCR = 0x2518;
+
+let device = null;
+let currentBrand = 'samsung';
+let cloning = false;
+
+// ============================================================
+// UI Functions
+// ============================================================
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (id === 'pageSaved') renderSaved();
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function log(msg, type = '') {
+  const logArea = document.getElementById('logArea');
+  const line = document.createElement('div');
+  if (type) line.className = `log-${type}`;
+  const now = new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  line.textContent = `[${now}] ${msg}`;
+  logArea.appendChild(line);
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+function cloneLog(msg, type = '') {
+  const logArea = document.getElementById('cloneLog');
+  const line = document.createElement('div');
+  if (type) line.className = `log-${type}`;
+  const now = new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  line.textContent = `[${now}] ${msg}`;
+  logArea.appendChild(line);
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+// Ripple effect on remote buttons
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.r-btn');
+  if (!btn) return;
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 2;
+  r.style.width = r.style.height = size + 'px';
+  r.style.left = (e.clientX - rect.left - size/2) + 'px';
+  r.style.top = (e.clientY - rect.top - size/2) + 'px';
+  btn.appendChild(r);
+  setTimeout(() => r.remove(), 500);
+});
+
+// ============================================================
+// Brand Selection
+// ============================================================
+
+function buildBrandGrid() {
+  const grid = document.getElementById('brandGrid');
+  grid.innerHTML = '';
+  Object.keys(IR_DB).forEach(key => {
+    const chip = document.createElement('div');
+    chip.className = 'brand-chip' + (key === currentBrand ? ' active' : '');
+    chip.textContent = IR_DB[key].name;
+    chip.onclick = () => selectBrand(key);
+    grid.appendChild(chip);
+  });
+}
+
+function selectBrand(key) {
+  currentBrand = key;
+  buildBrandGrid();
+  toast(`Marca: ${IR_DB[key].name}`);
+  log(`Marca seleccionada: ${IR_DB[key].name}`, 'info');
+}
+
+// ============================================================
+// Remote Buttons — send IR
+// ============================================================
+
+document.getElementById('remotePad').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-cmd]');
+  if (!btn || btn.disabled) return;
+  const cmd = btn.dataset.cmd;
+  const codes = IR_DB[currentBrand];
+  if (codes && codes[cmd]) {
+    await sendIR(`${codes.name} ${cmd}`, codes[cmd]);
+  }
+});
+
+// ============================================================
+// WebUSB Connection
+// ============================================================
+
+async function ch340Write(req, value, index) {
+  await device.controlTransferOut({ requestType:'vendor', recipient:'device', request:req, value, index });
+}
+
+async function ch340Init(baudRate) {
+  await ch340Write(CH340_REQ_SERIAL_INIT, 0, 0);
+  const rates = {
+    9600:  {f:0xB202, d:0x0038},
+    19200: {f:0xD902, d:0x0038},
+    38400: {f:0x6403, d:0x0038},
+    57600: {f:0x9803, d:0x0038},
+    115200:{f:0xCC03, d:0x0038},
+  };
+  const b = rates[baudRate] || rates[38400];
+  await ch340Write(CH340_REQ_WRITE_REG, CH340_REG_BPS_PRE, b.f);
+  await ch340Write(CH340_REQ_WRITE_REG, CH340_REG_BPS_DIV, b.d);
+  await ch340Write(CH340_REQ_WRITE_REG, CH340_REG_LCR, 0x00C3);
+  await ch340Write(CH340_REQ_MODEM_CTRL, 0x009F, 0);
+}
+
+function setConnected(on) {
+  document.getElementById('connDot').className = 'conn-dot ' + (on ? 'on' : 'off');
+  document.getElementById('connLabel').textContent = on ? 'Dongle conectado ✓' : 'Dongle desconectado';
+  document.getElementById('connAction').textContent = on ? 'Desconectar' : 'Conectar';
+  document.querySelectorAll('.r-btn[data-cmd]').forEach(b => b.disabled = !on);
+  document.getElementById('btnClone').disabled = !on;
+}
+
+async function toggleConnection() {
+  if (device) {
+    await disconnect();
+  } else {
+    await connect();
+  }
+}
+
+async function connect() {
+  if (!('usb' in navigator)) {
+    log('❌ WebUSB no disponible. Usa Chrome en Android.', 'err');
+    toast('Necesitas Chrome en Android');
+    return;
+  }
+  try {
+    log('Solicitando dispositivo USB...', 'info');
+    device = await navigator.usb.requestDevice({ filters: [{ vendorId: CH340_VID, productId: CH340_PID }] });
+    await device.open();
+    if (!device.configuration) await device.selectConfiguration(1);
+    await device.claimInterface(0);
+    await ch340Init(38400);
+    log('✅ CH340G conectado · 38400 baud · Listo', 'ok');
+    setConnected(true);
+    toast('Dongle conectado');
+  } catch (e) {
+    log(`❌ ${e.message}`, 'err');
+    device = null;
+  }
+}
+
+async function disconnect() {
+  try {
+    if (cloning) stopCloning();
+    if (device) { await device.releaseInterface(0); await device.close(); }
+  } catch(e) {}
+  device = null;
+  log('🔌 Desconectado', 'warn');
+  setConnected(false);
+  toast('Desconectado');
+}
+
+// ============================================================
+// Send IR
+// ============================================================
+
+async function sendIR(label, bytes) {
+  if (!device) return;
+  try {
+    await device.transferOut(2, new Uint8Array(bytes));
+    const hex = bytes.map(b=>'0x'+b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+    log(`📤 ${label}: [${hex}]`, 'ok');
+  } catch(e) {
+    log(`❌ Error TX: ${e.message}`, 'err');
+  }
+}
+
+// ============================================================
+// Clone / Learn Mode
+// ============================================================
+
+async function startCloning() {
+  if (!device) return;
+  const name = document.getElementById('cloneName').value.trim() || 'Sin nombre';
+  const button = document.getElementById('cloneButton').value.trim() || 'Botón';
+  cloning = true;
+  document.getElementById('btnClone').style.display = 'none';
+  document.getElementById('btnStopClone').style.display = '';
+  cloneLog(`👂 Escuchando... Apunta el mando al sensor y pulsa "${button}"`, 'info');
+  log(`🔴 Modo aprendizaje: esperando "${button}" para "${name}"`, 'info');
+
+  try {
+    while (cloning && device) {
+      const result = await device.transferIn(2, 64);
+      if (result.data && result.data.byteLength > 0) {
+        const arr = new Uint8Array(result.data.buffer);
+        const hex = Array.from(arr).map(b=>'0x'+b.toString(16).toUpperCase().padStart(2,'0'));
+        cloneLog(`📥 Capturado (${arr.length} bytes): ${hex.join(' ')}`, 'ok');
+        log(`📥 Capturado para "${name}/${button}": ${hex.join(' ')}`, 'ok');
+
+        // Save to localStorage
+        saveSignal(name, button, Array.from(arr));
+        toast(`Guardado: ${name} / ${button}`);
+        cloneLog(`💾 Señal guardada como "${name} → ${button}"`, 'ok');
+      }
+    }
+  } catch(e) {
+    if (cloning) cloneLog(`Error: ${e.message}`, 'err');
+  }
+}
+
+function stopCloning() {
+  cloning = false;
+  document.getElementById('btnClone').style.display = '';
+  document.getElementById('btnStopClone').style.display = 'none';
+  cloneLog('⏹ Captura detenida', 'warn');
+}
+
+// ============================================================
+// localStorage — Saved Signals
+// ============================================================
+
+function getSaved() {
+  try { return JSON.parse(localStorage.getItem('icaro_signals') || '[]'); } catch { return []; }
+}
+
+function saveSignal(device_name, button, bytes) {
+  const saved = getSaved();
+  saved.push({ device: device_name, button, bytes, date: new Date().toISOString() });
+  localStorage.setItem('icaro_signals', JSON.stringify(saved));
+}
+
+function deleteSaved(index) {
+  const saved = getSaved();
+  saved.splice(index, 1);
+  localStorage.setItem('icaro_signals', JSON.stringify(saved));
+  renderSaved();
+  toast('Señal eliminada');
+}
+
+function clearAllSaved() {
+  if (confirm('¿Borrar TODAS las señales guardadas?')) {
+    localStorage.removeItem('icaro_signals');
+    renderSaved();
+    toast('Todo borrado');
+  }
+}
+
+async function playSaved(index) {
+  const saved = getSaved();
+  if (saved[index]) {
+    await sendIR(`${saved[index].device}/${saved[index].button}`, saved[index].bytes);
+    toast(`Enviado: ${saved[index].button}`);
+  }
+}
+
+function renderSaved() {
+  const list = document.getElementById('savedList');
+  const saved = getSaved();
+  const btnClear = document.getElementById('btnClearAll');
+
+  if (saved.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📦</div>
+        <p>Aún no hay señales guardadas.<br>Ve a "Clonar" para capturar tu primer mando.</p>
+      </div>`;
+    btnClear.style.display = 'none';
+    return;
+  }
+
+  btnClear.style.display = '';
+
+  // Group by device
+  const groups = {};
+  saved.forEach((s, i) => {
+    if (!groups[s.device]) groups[s.device] = [];
+    groups[s.device].push({ ...s, _i: i });
+  });
+
+  let html = '';
+  Object.keys(groups).forEach(dev => {
+    html += `<div style="font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px;padding-left:4px">📺 ${dev}</div>`;
+    groups[dev].forEach(s => {
+      html += `
+        <div class="saved-item">
+          <div class="saved-icon">📡</div>
+          <div class="saved-info">
+            <div class="name">${s.button}</div>
+            <div class="detail">${s.bytes.length} bytes · ${new Date(s.date).toLocaleDateString('es-ES')}</div>
+          </div>
+          <div class="saved-actions">
+            <button onclick="playSaved(${s._i})" title="Enviar" ${!device ? 'disabled' : ''}>▶</button>
+            <button onclick="deleteSaved(${s._i})" title="Borrar">🗑</button>
+          </div>
+        </div>`;
+    });
+  });
+
+  list.innerHTML = html;
+}
+
+// ============================================================
+// Init
+// ============================================================
+
+buildBrandGrid();
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (!('usb' in navigator)) {
+    log('⚠️ WebUSB no disponible. Necesitas Chrome + HTTPS.', 'err');
+  } else {
+    log('✅ WebUSB disponible · Conecta el dongle para empezar', 'ok');
+  }
+});
+
+window.addEventListener('beforeunload', () => { if (device) disconnect(); });
+</script>
+
+</body>
+</html>
