@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Proyecto Ícaro — Hundir la Flota IR</title>
+<meta name="theme-color" content="#08080f">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#06060d;--surface:rgba(255,255,255,0.05);--surface2:rgba(255,255,255,0.08);
+--surface3:rgba(255,255,255,0.12);--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+--text:#eaeaf2;--dim:#7a7a96;--mid:#a0a0b8;--accent:#6366f1;--accent2:#818cf8;
+--aglow:rgba(99,102,241,0.35);--green:#34d399;--gglow:rgba(52,211,153,0.25);
+--red:#f87171;--rglow:rgba(248,113,113,0.25);--orange:#fbbf24;--cyan:#22d3ee;
+--sea:#0c1a2e;--ship:#2d4a6f;--hit:#dc2626;--miss:rgba(255,255,255,0.15);--sunk:#7f1d1d}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);
+min-height:100dvh;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+.bg-orbs{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.bg-orbs span{position:absolute;border-radius:50%;filter:blur(90px);opacity:.2}
+.bg-orbs .o1{width:300px;height:300px;background:#0ea5e9;top:-80px;left:-60px;animation:of 14s ease-in-out infinite alternate}
+.bg-orbs .o2{width:240px;height:240px;background:#7c3aed;bottom:15%;right:-60px;animation:of 18s ease-in-out infinite alternate-reverse}
+@keyframes of{0%{transform:translate(0,0) scale(1)}100%{transform:translate(20px,25px) scale(1.1)}}
+.app{position:relative;z-index:1;max-width:420px;margin:0 auto;padding:12px 12px 24px}
+
+/* Header */
+.hdr{display:flex;align-items:center;gap:10px;padding:8px 0 12px}
+.hdr h1{flex:1;font-size:20px;font-weight:800;letter-spacing:-.5px;
+background:linear-gradient(135deg,#fff,var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.conn-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;
+background:var(--surface2);border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:500}
+.conn-chip:active{transform:scale(.96)}
+.conn-chip .dot{width:8px;height:8px;border-radius:50%}
+.conn-chip .dot.off{background:var(--red);box-shadow:0 0 6px var(--rglow)}
+.conn-chip .dot.on{background:var(--green);box-shadow:0 0 6px var(--gglow);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* Status */
+.status{text-align:center;padding:8px;font-size:13px;font-weight:600;border-radius:10px;margin-bottom:10px}
+.status.info{background:rgba(99,102,241,.1);color:var(--accent2)}
+.status.turn{background:rgba(52,211,153,.1);color:var(--green)}
+.status.wait{background:rgba(251,191,36,.1);color:var(--orange)}
+.status.danger{background:rgba(248,113,113,.1);color:var(--red)}
+.status.win{background:rgba(52,211,153,.15);color:var(--green);font-size:16px;padding:14px}
+
+/* Grid */
+.grid-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;
+color:var(--dim);margin:8px 0 6px;display:flex;align-items:center;gap:6px}
+.grid-label .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+
+.grid-wrap{display:flex;justify-content:center;margin-bottom:8px}
+.grid{display:inline-grid;grid-template-columns:24px repeat(8,1fr);
+grid-template-rows:24px repeat(8,1fr);gap:2px;background:rgba(0,0,0,.3);
+border-radius:12px;padding:4px;border:1px solid var(--border)}
+.grid.radar{border-color:rgba(99,102,241,.2)}
+.grid.own{border-color:rgba(14,165,233,.2)}
+
+.hdr-cell{display:flex;align-items:center;justify-content:center;
+font-size:10px;font-weight:600;color:var(--dim)}
+.cell{width:36px;height:36px;border-radius:6px;background:var(--sea);
+border:1px solid rgba(255,255,255,.04);cursor:pointer;display:flex;
+align-items:center;justify-content:center;font-size:14px;transition:all .12s;position:relative}
+.cell:active:not(.disabled){transform:scale(.9)}
+.cell.ship{background:var(--ship);border-color:rgba(255,255,255,.1)}
+.cell.hit{background:var(--hit);border-color:rgba(220,38,38,.4)}
+.cell.hit::after{content:'✕';color:#fff;font-size:16px;font-weight:700}
+.cell.miss{background:var(--sea)}
+.cell.miss::after{content:'•';color:rgba(255,255,255,.4);font-size:20px}
+.cell.sunk{background:var(--sunk);border-color:rgba(127,29,29,.6)}
+.cell.sunk::after{content:'✕';color:#fca5a5;font-size:16px;font-weight:700}
+.cell.disabled{cursor:default;opacity:.7}
+.cell.hover{background:rgba(99,102,241,.2);border-color:rgba(99,102,241,.4)}
+
+/* Ship list */
+.ships-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;justify-content:center}
+.ship-badge{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600;
+background:var(--surface2);border:1px solid var(--border);color:var(--mid);
+display:flex;align-items:center;gap:4px}
+.ship-badge.alive .dots span{width:8px;height:8px;border-radius:3px;background:var(--ship);display:inline-block}
+.ship-badge.dead{opacity:.4;text-decoration:line-through;border-color:var(--red)}
+.ship-badge.dead .dots span{background:var(--red)}
+.ship-badge .dots{display:flex;gap:2px}
+
+/* Buttons */
+.btn{width:100%;padding:12px;border:none;border-radius:12px;font-family:'Outfit';
+font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;
+display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.97)}.btn:disabled{opacity:.3;pointer-events:none}
+.btn-accent{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 16px var(--aglow)}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-green{background:linear-gradient(135deg,#059669,var(--green));color:#022c22;box-shadow:0 4px 16px var(--gglow)}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+
+/* Score */
+.score-bar{display:flex;justify-content:center;gap:20px;padding:8px;font-size:12px;
+font-weight:600;color:var(--dim)}
+.score-bar .val{color:var(--text);font-size:16px}
+
+/* Log */
+.log-toggle{position:fixed;bottom:12px;right:12px;z-index:50;width:36px;height:36px;
+border-radius:50%;background:var(--surface3);border:1px solid var(--border);color:var(--dim);
+font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.log-panel{position:fixed;bottom:56px;left:8px;right:8px;z-index:40;
+background:rgba(0,0,0,.9);backdrop-filter:blur(16px);border:1px solid var(--border);
+border-radius:12px;max-height:200px;overflow-y:auto;padding:10px;
+font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.6;
+color:var(--dim);display:none}
+.log-panel.show{display:block}
+.log-panel .log-ok{color:var(--green)}.log-panel .log-err{color:var(--red)}
+.log-panel .log-warn{color:var(--orange)}.log-panel .log-info{color:var(--cyan)}
+
+/* Toast */
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-20px);
+background:var(--surface3);backdrop-filter:blur(20px);border:1px solid var(--border2);
+border-radius:12px;padding:8px 18px;font-size:12px;font-weight:500;color:var(--text);
+z-index:200;opacity:0;transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Phases */
+.phase{display:none}.phase.active{display:block;animation:fi .3s ease}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="bg-orbs"><span class="o1"></span><span class="o2"></span></div>
+
+<div class="app">
+  <div class="hdr">
+    <h1>🚢 Hundir la Flota</h1>
+    <div class="conn-chip" id="connChip" onclick="toggleConnection()">
+      <span class="dot off" id="connDot"></span>
+      <span id="connText">Conectar</span>
+    </div>
+  </div>
+
+  <div class="status info" id="status">Conecta el dongle para empezar</div>
+
+  <!-- ========== PHASE: SETUP ========== -->
+  <div class="phase active" id="phaseSetup">
+    <div class="grid-label"><span class="dot"></span> Tu Flota — Coloca tus barcos</div>
+    <div class="grid-wrap"><div class="grid own" id="setupGrid"></div></div>
+    <div class="ships-bar" id="setupShips"></div>
+    <div class="btn-row" style="margin-bottom:8px">
+      <button class="btn btn-ghost" onclick="randomPlace()">🔄 Recolocar</button>
+      <button class="btn btn-green" id="btnReady" disabled onclick="playerReady()">✅ ¡Listo!</button>
+    </div>
+  </div>
+
+  <!-- ========== PHASE: BATTLE ========== -->
+  <div class="phase" id="phaseBattle">
+    <div class="score-bar">
+      <div>Tú: <span class="val" id="scoreMe">0</span></div>
+      <div>Rival: <span class="val" id="scoreEnemy">0</span></div>
+    </div>
+
+    <div class="grid-label"><span class="dot"></span> Radar — Pulsa para atacar</div>
+    <div class="grid-wrap"><div class="grid radar" id="radarGrid"></div></div>
+
+    <div class="grid-label"><span class="dot"></span> Tu Flota</div>
+    <div class="grid-wrap"><div class="grid own" id="myGrid"></div></div>
+    <div class="ships-bar" id="myShips"></div>
+  </div>
+
+  <!-- ========== PHASE: GAME OVER ========== -->
+  <div class="phase" id="phaseGameOver">
+    <div style="text-align:center;padding:40px 20px">
+      <div style="font-size:60px;margin-bottom:16px" id="goIcon">🏆</div>
+      <h2 style="font-size:22px;margin-bottom:8px" id="goTitle">¡Victoria!</h2>
+      <p style="color:var(--dim);font-size:14px;margin-bottom:20px" id="goSub">Has hundido toda la flota enemiga</p>
+      <button class="btn btn-accent" onclick="resetGame()">🔄 Jugar otra vez</button>
+    </div>
+  </div>
+</div>
+
+<button class="log-toggle" onclick="toggleLog()">📋</button>
+<div class="log-panel" id="logPanel"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  HUNDIR LA FLOTA — Comunicación IR entre dos móviles
+//  Protocolo: misma modulación que Chat IR
+//  76800 baud TX (0x55 carrier), 1200 baud RX (VS1838B demodula)
+// ============================================================
+
+const CH340_VID = 0x1A86, CH340_PID = 0x7523;
+const CARRIER_ON = 0x55, CARRIER_OFF = 0xFF;
+const US_PER_BYTE = 130.208;
+const BIT_PATTERN = [7,6,7,6,6,7,6,6,7,6]; // 64 bytes = 1 char at 1200 baud
+const PREAMBLE_BYTES = Math.round(20000/US_PER_BYTE);
+
+const GRID_SIZE = 8;
+const SHIPS = [
+  {name:'Acorazado', size:4, id:'A'},
+  {name:'Crucero',   size:3, id:'C'},
+  {name:'Submarino', size:3, id:'S'},
+  {name:'Destructor',size:2, id:'D'},
+];
+const COLS = 'ABCDEFGH'.split('');
+
+// Game state
+let device = null;
+let rxActive = false;
+let myBoard = [];     // 8x8: null=water, {shipId, hit:false}
+let radarBoard = [];  // 8x8: null=unknown, 'miss', 'hit', 'sunk'
+let myShipsPlaced = [];
+let gameState = 'setup'; // setup, waiting, myturn, enemyturn, gameover
+let myHits = 0, enemyHits = 0;
+const totalHP = SHIPS.reduce((s,sh)=>s+sh.size,0); // 12
+
+// ============================================================
+//  IR Communication (same as chat)
+// ============================================================
+
+function encode1200Byte(byte) {
+  const bits = [0];
+  for (let i=0;i<8;i++) bits.push((byte>>i)&1);
+  bits.push(1);
+  const out = [];
+  for (let i=0;i<10;i++) {
+    const count = BIT_PATTERN[i];
+    const val = bits[i]===0 ? CARRIER_ON : CARRIER_OFF;
+    for (let j=0;j<count;j++) out.push(val);
+  }
+  return out;
+}
+
+function buildIRFrame(data) {
+  const buf = [];
+  for (let i=0;i<PREAMBLE_BYTES;i++) buf.push(CARRIER_ON);
+  const silence = Math.round(2000/US_PER_BYTE);
+  for (let i=0;i<silence;i++) buf.push(CARRIER_OFF);
+  buf.push(...encode1200Byte(0xAA));
+  buf.push(...encode1200Byte(0x55));
+  buf.push(...encode1200Byte(data.length));
+  let xor=0;
+  for (const b of data) { buf.push(...encode1200Byte(b)); xor^=b; }
+  buf.push(...encode1200Byte(xor));
+  for (let i=0;i<20;i++) buf.push(CARRIER_OFF);
+  return new Uint8Array(buf);
+}
+
+async function ch340Write(req,val,idx){
+  await device.controlTransferOut({requestType:'vendor',recipient:'device',request:req,value:val,index:idx});
+}
+async function setBaud(rate){
+  const rates={1200:{f:0xB201,d:0x0038},76800:{f:0xB203,d:0x0038}};
+  const b=rates[rate]; if(!b)return;
+  await ch340Write(0x9A,0x2518,b.f);
+  await ch340Write(0x9A,0x0F2C,b.d);
+}
+async function ch340Init(){
+  await ch340Write(0xA1,0,0);
+  await setBaud(1200);
+  await ch340Write(0x9A,0x2518,0x00C3);
+  await ch340Write(0xA4,0x009F,0);
+}
+
+async function irSend(data) {
+  if (!device) return;
+  try {
+    rxActive = false;
+    await new Promise(r=>setTimeout(r,30));
+    await setBaud(76800);
+    await new Promise(r=>setTimeout(r,10));
+    const frame = buildIRFrame(data);
+    await device.transferOut(2, frame);
+    log('📤 TX: ['+Array.from(data).map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join(' ')+'] · '+frame.length+'B','ok');
+    const txTime = frame.length*US_PER_BYTE/1000;
+    await new Promise(r=>setTimeout(r,txTime+30));
+    await setBaud(1200);
+    await new Promise(r=>setTimeout(r,10));
+    startRx();
+  } catch(e){log('❌ TX: '+e.message,'err');}
+}
+
+// RX
+let syncState=0, frameLen=0, frameData=[];
+
+function processRxByte(byte) {
+  switch(syncState) {
+    case 0: if(byte===0xAA){syncState=1;} break;
+    case 1: if(byte===0x55){syncState=2;frameData=[];}
+            else if(byte!==0xAA){syncState=0;} break;
+    case 2: frameLen=byte;
+            if(frameLen===0||frameLen>20){syncState=0;}
+            else{syncState=3;frameData=[];} break;
+    case 3: frameData.push(byte);
+            if(frameData.length===frameLen+1){
+              let xor=0;
+              for(let i=0;i<frameLen;i++) xor^=frameData[i];
+              if(xor===frameData[frameLen]){
+                handleMessage(frameData.slice(0,frameLen));
+              } else {log('❌ Checksum error','err');}
+              syncState=0;
+            } break;
+  }
+}
+
+async function startRx(){
+  rxActive=true;
+  while(rxActive&&device){
+    try{
+      const r=await device.transferIn(2,64);
+      if(r.data&&r.data.byteLength>0){
+        const arr=new Uint8Array(r.data.buffer);
+        for(const b of arr) processRxByte(b);
+      }
+    }catch(e){
+      if(rxActive&&e.message&&!e.message.includes('timed out')&&!e.message.includes('transfer')){
+        log('RX err: '+e.message,'err'); break;
+      }
+    }
+  }
+}
+
+// ============================================================
+//  Game Protocol
+//  ATTACK:  [0x41, row, col]
+//  RESULT:  [0x52, code]  0=miss, 1=hit, 2=sunk
+//  READY:   [0x47]
+//  WIN:     [0x57]
+// ============================================================
+
+function handleMessage(data) {
+  const type = data[0];
+  log('📥 RX msg: '+String.fromCharCode(type)+' data:'+data.slice(1).join(','),'info');
+
+  if (type === 0x47) { // READY
+    log('👤 Oponente listo','ok');
+    if (gameState === 'waiting') {
+      // Opponent is ready, we were already ready → we attack first!
+      gameState = 'myturn';
+      setStatus('turn','🎯 ¡Tu turno! Pulsa una celda del Radar');
+      showPhase('phaseBattle');
+      toast('¡El rival está listo! Tú atacas primero');
+    } else if (gameState === 'setup') {
+      toast('El rival ya está listo, ¡coloca tus barcos!');
+    }
+  }
+  else if (type === 0x41) { // ATTACK
+    const row = data[1], col = data[2];
+    log('💥 Ataque recibido: '+COLS[col]+(row+1),'warn');
+    handleIncomingAttack(row, col);
+  }
+  else if (type === 0x52) { // RESULT
+    const code = data[1];
+    handleAttackResult(code);
+  }
+  else if (type === 0x57) { // WIN - opponent tells us they won
+    gameState = 'gameover';
+    showGameOver(false);
+  }
+}
+
+// ============================================================
+//  Game Logic
+// ============================================================
+
+function initBoards() {
+  myBoard = Array.from({length:GRID_SIZE},()=>Array(GRID_SIZE).fill(null));
+  radarBoard = Array.from({length:GRID_SIZE},()=>Array(GRID_SIZE).fill(null));
+  myShipsPlaced = [];
+  myHits = 0; enemyHits = 0;
+  lastAttack = null;
+}
+
+function randomPlace() {
+  initBoards();
+  for (const ship of SHIPS) {
+    let placed = false;
+    let attempts = 0;
+    while (!placed && attempts < 200) {
+      attempts++;
+      const horiz = Math.random() > 0.5;
+      const r = Math.floor(Math.random() * (horiz ? GRID_SIZE : GRID_SIZE - ship.size));
+      const c = Math.floor(Math.random() * (horiz ? GRID_SIZE - ship.size : GRID_SIZE));
+      let ok = true;
+      const cells = [];
+      for (let i = 0; i < ship.size; i++) {
+        const cr = horiz ? r : r + i;
+        const cc = horiz ? c + i : c;
+        if (myBoard[cr][cc] !== null) { ok = false; break; }
+        cells.push([cr, cc]);
+      }
+      if (ok) {
+        cells.forEach(([cr,cc]) => myBoard[cr][cc] = {shipId:ship.id, hit:false});
+        myShipsPlaced.push({...ship, cells, sunk:false});
+        placed = true;
+      }
+    }
+  }
+  renderSetupGrid();
+  document.getElementById('btnReady').disabled = !device;
+  log('🎲 Barcos colocados aleatoriamente','info');
+}
+
+let lastAttack = null; // {row, col} of our last attack
+
+function handleIncomingAttack(row, col) {
+  if (row<0||row>=GRID_SIZE||col<0||col>=GRID_SIZE) return;
+  const cell = myBoard[row][col];
+  let resultCode = 0; // miss
+  if (cell && !cell.hit) {
+    cell.hit = true;
+    enemyHits++;
+    // Check if ship is sunk
+    const ship = myShipsPlaced.find(s => s.id === cell.shipId);
+    const allHit = ship.cells.every(([r,c]) => myBoard[r][c].hit);
+    if (allHit) {
+      ship.sunk = true;
+      resultCode = 2; // sunk
+      log('💀 '+ship.name+' hundido!','err');
+    } else {
+      resultCode = 1; // hit
+      log('🔥 Tocado en '+COLS[col]+(row+1),'warn');
+    }
+  } else {
+    log('💧 Agua en '+COLS[col]+(row+1),'info');
+  }
+
+  // Send result
+  irSend([0x52, resultCode]);
+
+  // Update own grid display
+  renderMyGrid();
+  updateMyShips();
+  document.getElementById('scoreEnemy').textContent = enemyHits;
+
+  // Check if we lost
+  if (enemyHits >= totalHP) {
+    gameState = 'gameover';
+    // Opponent will send WIN when they process our sunk result
+    setTimeout(()=>showGameOver(false), 500);
+    return;
+  }
+
+  // Now it's our turn
+  gameState = 'myturn';
+  setStatus('turn','🎯 ¡Tu turno! Pulsa una celda del Radar');
+  if (navigator.vibrate) navigator.vibrate(200);
+}
+
+function handleAttackResult(code) {
+  if (!lastAttack) return;
+  const {row, col} = lastAttack;
+  if (code === 0) { // miss
+    radarBoard[row][col] = 'miss';
+    setStatus('wait','💧 Agua... Turno del rival');
+    toast('Agua en '+COLS[col]+(row+1));
+  } else if (code === 1) { // hit
+    radarBoard[row][col] = 'hit';
+    myHits++;
+    setStatus('wait','🔥 ¡Tocado! Turno del rival');
+    toast('¡Tocado en '+COLS[col]+(row+1)+'!');
+    if (navigator.vibrate) navigator.vibrate([100,50,100]);
+  } else if (code === 2) { // sunk
+    radarBoard[row][col] = 'sunk';
+    myHits++;
+    setStatus('wait','💀 ¡Hundido! Turno del rival');
+    toast('¡¡Hundido en '+COLS[col]+(row+1)+'!!');
+    if (navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
+    // Mark adjacent hits as sunk too
+    markSunkArea(row, col);
+  }
+
+  document.getElementById('scoreMe').textContent = myHits;
+  renderRadarGrid();
+  lastAttack = null;
+
+  // Check if we won
+  if (myHits >= totalHP) {
+    gameState = 'gameover';
+    irSend([0x57]); // tell opponent we won
+    setTimeout(()=>showGameOver(true), 300);
+    return;
+  }
+
+  // Enemy's turn
+  gameState = 'enemyturn';
+}
+
+function markSunkArea(r, c) {
+  // BFS to find connected hits and mark as sunk
+  const visited = new Set();
+  const queue = [[r,c]];
+  while (queue.length) {
+    const [cr,cc] = queue.shift();
+    const key = cr+','+cc;
+    if (visited.has(key)) continue;
+    visited.add(key);
+    if (radarBoard[cr][cc]==='hit' || radarBoard[cr][cc]==='sunk') {
+      radarBoard[cr][cc] = 'sunk';
+      [[cr-1,cc],[cr+1,cc],[cr,cc-1],[cr,cc+1]].forEach(([nr,nc])=>{
+        if(nr>=0&&nr<GRID_SIZE&&nc>=0&&nc<GRID_SIZE&&!visited.has(nr+','+nc)) queue.push([nr,nc]);
+      });
+    }
+  }
+}
+
+// ============================================================
+//  UI Rendering
+// ============================================================
+
+function makeGridHTML(id, board, clickable, showShips) {
+  let html = '<div class="hdr-cell"></div>';
+  for (let c=0;c<GRID_SIZE;c++) html += '<div class="hdr-cell">'+COLS[c]+'</div>';
+  for (let r=0;r<GRID_SIZE;r++) {
+    html += '<div class="hdr-cell">'+(r+1)+'</div>';
+    for (let c=0;c<GRID_SIZE;c++) {
+      let cls = 'cell';
+      const cell = board[r][c];
+      if (showShips) {
+        // Own board
+        if (cell) {
+          if (cell.hit) cls += ' hit';
+          else cls += ' ship';
+        } else if (cell === 'miss_marker') cls += ' miss';
+      } else {
+        // Radar board
+        if (cell === 'miss') cls += ' miss';
+        else if (cell === 'hit') cls += ' hit';
+        else if (cell === 'sunk') cls += ' sunk';
+      }
+      if (!clickable) cls += ' disabled';
+      html += `<div class="${cls}" data-r="${r}" data-c="${c}"></div>`;
+    }
+  }
+  document.getElementById(id).innerHTML = html;
+}
+
+function renderSetupGrid() {
+  makeGridHTML('setupGrid', myBoard, false, true);
+  renderSetupShips();
+}
+
+function renderRadarGrid() {
+  makeGridHTML('radarGrid', radarBoard, gameState==='myturn', false);
+}
+
+function renderMyGrid() {
+  makeGridHTML('myGrid', myBoard, false, true);
+}
+
+function renderSetupShips() {
+  document.getElementById('setupShips').innerHTML = SHIPS.map(s => {
+    const placed = myShipsPlaced.find(p=>p.id===s.id);
+    const dots = Array(s.size).fill(0).map(()=>'<span></span>').join('');
+    return `<div class="ship-badge alive"><span>${s.name}</span><div class="dots">${dots}</div></div>`;
+  }).join('');
+}
+
+function updateMyShips() {
+  document.getElementById('myShips').innerHTML = myShipsPlaced.map(s => {
+    const cls = s.sunk ? 'ship-badge dead' : 'ship-badge alive';
+    const dots = Array(s.size).fill(0).map(()=>'<span></span>').join('');
+    return `<div class="${cls}"><span>${s.name}</span><div class="dots">${dots}</div></div>`;
+  }).join('');
+}
+
+function setStatus(type, text) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + type;
+  el.textContent = text;
+}
+
+function showPhase(id) {
+  document.querySelectorAll('.phase').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'phaseBattle') {
+    renderRadarGrid();
+    renderMyGrid();
+    updateMyShips();
+  }
+}
+
+function showGameOver(won) {
+  showPhase('phaseGameOver');
+  document.getElementById('goIcon').textContent = won ? '🏆' : '💀';
+  document.getElementById('goTitle').textContent = won ? '¡Victoria!' : 'Derrota';
+  document.getElementById('goSub').textContent = won
+    ? '¡Has hundido toda la flota enemiga!'
+    : 'Tu flota ha sido destruida...';
+  setStatus(won?'win':'danger', won?'🏆 ¡HAS GANADO!':'💀 Has perdido');
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+function log(msg,type=''){
+  const p=document.getElementById('logPanel');const l=document.createElement('div');
+  if(type)l.className='log-'+type;
+  const now=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  l.textContent='['+now+'] '+msg;p.appendChild(l);p.scrollTop=p.scrollHeight;
+}
+
+function toggleLog(){document.getElementById('logPanel').classList.toggle('show');}
+
+// ============================================================
+//  Radar grid click handler
+// ============================================================
+
+document.addEventListener('click', async (e) => {
+  const cell = e.target.closest('.cell:not(.disabled)');
+  if (!cell) return;
+  const r = parseInt(cell.dataset.r);
+  const c = parseInt(cell.dataset.c);
+
+  // Only handle clicks on radar grid during our turn
+  if (gameState !== 'myturn') return;
+  const radarGrid = document.getElementById('radarGrid');
+  if (!radarGrid.contains(cell)) return;
+
+  // Check if already attacked
+  if (radarBoard[r][c] !== null) { toast('Ya atacaste ahí'); return; }
+
+  // Send attack!
+  gameState = 'enemyturn'; // prevent double-tap
+  setStatus('wait','📡 Enviando ataque '+COLS[c]+(r+1)+'...');
+  lastAttack = {row:r, col:c};
+  log('🎯 Atacando '+COLS[c]+(r+1),'info');
+
+  await irSend([0x41, r, c]);
+  setStatus('wait','⏳ Esperando respuesta...');
+});
+
+// ============================================================
+//  Connection
+// ============================================================
+
+function setConnected(on){
+  document.getElementById('connDot').className='dot '+(on?'on':'off');
+  document.getElementById('connText').textContent=on?'OK':'Conectar';
+  document.getElementById('btnReady').disabled = !on;
+}
+
+async function toggleConnection(){
+  if(device){
+    rxActive=false;
+    try{await device.releaseInterface(0);await device.close();}catch(e){}
+    device=null;log('🔌 Desconectado','warn');setConnected(false);
+    setStatus('info','Conecta el dongle para empezar');
+  } else {
+    if(!('usb' in navigator)){toast('Chrome Android necesario');return;}
+    try{
+      device=await navigator.usb.requestDevice({filters:[{vendorId:CH340_VID,productId:CH340_PID}]});
+      await device.open();
+      if(!device.configuration) await device.selectConfiguration(1);
+      await device.claimInterface(0);
+      await ch340Init();
+      log('✅ Conectado · 1200 baud RX','ok');
+      setConnected(true);
+      setStatus('info','Coloca tus barcos y pulsa ¡Listo!');
+      toast('Dongle conectado');
+      startRx();
+    }catch(e){log('❌ '+e.message,'err');device=null;}
+  }
+}
+
+// ============================================================
+//  Game Flow
+// ============================================================
+
+function playerReady() {
+  if (gameState !== 'setup') return;
+  gameState = 'waiting';
+  setStatus('wait','⏳ Esperando al rival... Apunta el dongle al suyo');
+  // Send READY signal
+  irSend([0x47]);
+  // Also send again after 2 seconds for reliability
+  setTimeout(() => {
+    if (gameState === 'waiting') irSend([0x47]);
+  }, 2000);
+  log('✅ Listo! Esperando rival...','ok');
+}
+
+function resetGame() {
+  gameState = 'setup';
+  showPhase('phaseSetup');
+  setStatus('info','Coloca tus barcos y pulsa ¡Listo!');
+  randomPlace();
+}
+
+// ============================================================
+//  Init
+// ============================================================
+
+randomPlace();
+
+window.addEventListener('DOMContentLoaded',()=>{
+  if(!('usb' in navigator)) {
+    log('⚠️ WebUSB no disponible','err');
+    setStatus('danger','⚠️ Necesitas Chrome en Android');
+  } else {
+    log('✅ WebUSB ok · Hundir la Flota IR','ok');
+  }
+});
+
+window.addEventListener('beforeunload',()=>{
+  rxActive=false;
+  if(device){try{device.releaseInterface(0);device.close();}catch(e){}}
+});
+</script>
+</body>
+</html>

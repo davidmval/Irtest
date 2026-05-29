@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Proyecto Ícaro — Piedra Papel Tijeras Lagarto Spock</title>
+<meta name="theme-color" content="#08080f">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#07060e;--surface:rgba(255,255,255,0.05);--surface2:rgba(255,255,255,0.08);
+--surface3:rgba(255,255,255,0.12);--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+--text:#eaeaf2;--dim:#7a7a96;--mid:#a0a0b8;--accent:#a855f7;--accent2:#c084fc;
+--aglow:rgba(168,85,247,0.3);--green:#34d399;--gglow:rgba(52,211,153,0.25);
+--red:#f87171;--rglow:rgba(248,113,113,0.25);--orange:#fbbf24;--cyan:#22d3ee;
+--gold:#f59e0b;--pink:#ec4899}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);
+min-height:100dvh;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+
+/* Background */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.bg span{position:absolute;border-radius:50%;filter:blur(100px);opacity:.2}
+.bg .b1{width:300px;height:300px;background:var(--accent);top:-60px;left:-40px;animation:fl 16s ease-in-out infinite alternate}
+.bg .b2{width:250px;height:250px;background:var(--pink);bottom:10%;right:-50px;animation:fl 20s ease-in-out infinite alternate-reverse}
+.bg .b3{width:200px;height:200px;background:var(--cyan);top:40%;left:60%;animation:fl 14s ease-in-out infinite alternate;opacity:.1}
+@keyframes fl{0%{transform:translate(0,0) scale(1)}100%{transform:translate(20px,25px) scale(1.12)}}
+
+.app{position:relative;z-index:1;max-width:420px;margin:0 auto;padding:16px;min-height:100dvh;
+display:flex;flex-direction:column}
+
+/* Header */
+.hdr{display:flex;align-items:center;gap:10px;padding:4px 0 12px}
+.hdr h1{flex:1;font-size:16px;font-weight:800;letter-spacing:-.3px;
+background:linear-gradient(135deg,#fff,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.conn-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;
+background:var(--surface2);border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:500}
+.conn-chip:active{transform:scale(.96)}
+.conn-chip .dot{width:8px;height:8px;border-radius:50%}
+.conn-chip .dot.off{background:var(--red);box-shadow:0 0 6px var(--rglow)}
+.conn-chip .dot.on{background:var(--green);box-shadow:0 0 6px var(--gglow);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* Score */
+.score{display:flex;justify-content:center;gap:24px;padding:10px;margin-bottom:8px}
+.score-item{text-align:center}
+.score-item .label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);font-weight:600}
+.score-item .val{font-size:28px;font-weight:900;margin-top:2px}
+.score-item .val.me{color:var(--green)}
+.score-item .val.them{color:var(--red)}
+.score-item .val.draw{color:var(--orange)}
+.score-sep{font-size:28px;font-weight:300;color:var(--dim);align-self:flex-end;padding-bottom:2px}
+
+/* Status */
+.status{text-align:center;padding:10px 16px;font-size:14px;font-weight:600;border-radius:14px;
+margin-bottom:12px;transition:all .3s}
+.status.choosing{background:rgba(168,85,247,.1);color:var(--accent2)}
+.status.locked{background:rgba(251,191,36,.1);color:var(--orange)}
+.status.reveal{background:rgba(52,211,153,.1);color:var(--green)}
+.status.win{background:rgba(52,211,153,.15);color:var(--green)}
+.status.lose{background:rgba(248,113,113,.1);color:var(--red)}
+.status.tie{background:rgba(251,191,36,.1);color:var(--orange)}
+
+/* Choices */
+.choices{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:16px;padding:8px 0}
+.choice-btn{width:100px;height:110px;border-radius:20px;background:var(--surface2);
+border:2px solid var(--border);cursor:pointer;display:flex;flex-direction:column;
+align-items:center;justify-content:center;gap:6px;transition:all .2s;position:relative}
+.choice-btn:active{transform:scale(.93)}
+.choice-btn .emoji{font-size:38px;transition:transform .2s}
+.choice-btn .name{font-size:11px;font-weight:600;color:var(--mid)}
+.choice-btn.selected{border-color:var(--accent);background:rgba(168,85,247,.12);
+box-shadow:0 0 24px rgba(168,85,247,.2)}
+.choice-btn.selected .emoji{transform:scale(1.15)}
+.choice-btn.selected .name{color:var(--accent2)}
+.choice-btn.disabled{opacity:.35;pointer-events:none}
+.choice-btn.winner{border-color:var(--green);background:rgba(52,211,153,.1);
+box-shadow:0 0 20px var(--gglow)}
+.choice-btn.loser{border-color:var(--red);opacity:.5}
+
+/* Arena */
+.arena{display:flex;align-items:center;justify-content:center;gap:16px;
+padding:20px 0;margin-bottom:12px}
+.arena-side{text-align:center;flex:1}
+.arena-side .who{font-size:10px;text-transform:uppercase;letter-spacing:1px;
+color:var(--dim);font-weight:600;margin-bottom:8px}
+.arena-icon{width:80px;height:80px;border-radius:20px;background:var(--surface2);
+border:2px solid var(--border);display:flex;align-items:center;justify-content:center;
+font-size:40px;margin:0 auto;transition:all .4s}
+.arena-icon.hidden{background:var(--surface);font-size:28px}
+.arena-icon.win{border-color:var(--green);background:rgba(52,211,153,.08);box-shadow:0 0 20px var(--gglow)}
+.arena-icon.lose{border-color:var(--red);opacity:.6}
+.arena-vs{font-size:22px;font-weight:900;color:var(--dim)}
+
+/* Result message */
+.result-msg{text-align:center;font-size:13px;color:var(--mid);margin-bottom:16px;
+min-height:20px;font-weight:500;font-style:italic}
+
+/* Buttons */
+.btn{width:100%;padding:14px;border:none;border-radius:14px;font-family:'Outfit';
+font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;
+display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.97)}.btn:disabled{opacity:.3;pointer-events:none}
+.btn-accent{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+box-shadow:0 4px 20px var(--aglow)}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);margin-top:8px}
+.btn-row{display:flex;gap:8px}.btn-row .btn{flex:1}
+
+/* Log */
+.log-toggle{position:fixed;bottom:12px;right:12px;z-index:50;width:36px;height:36px;
+border-radius:50%;background:var(--surface3);border:1px solid var(--border);color:var(--dim);
+font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.log-panel{position:fixed;bottom:56px;left:8px;right:8px;z-index:40;
+background:rgba(0,0,0,.92);backdrop-filter:blur(16px);border:1px solid var(--border);
+border-radius:12px;max-height:180px;overflow-y:auto;padding:10px;
+font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.6;
+color:var(--dim);display:none}
+.log-panel.show{display:block}
+.log-panel .log-ok{color:var(--green)}.log-panel .log-err{color:var(--red)}
+.log-panel .log-warn{color:var(--orange)}.log-panel .log-info{color:var(--cyan)}
+
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-20px);
+background:var(--surface3);backdrop-filter:blur(20px);border:1px solid var(--border2);
+border-radius:12px;padding:8px 18px;font-size:13px;font-weight:500;color:var(--text);
+z-index:200;opacity:0;transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Animations */
+@keyframes bounceIn{0%{transform:scale(0);opacity:0}50%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.bounce{animation:bounceIn .5s ease}
+.shake{animation:shake .4s ease}
+</style>
+</head>
+<body>
+<div class="bg"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+
+<div class="app">
+  <div class="hdr">
+    <h1>🖖 Piedra Papel Tijeras Lagarto Spock</h1>
+    <div class="conn-chip" onclick="toggleConnection()">
+      <span class="dot off" id="connDot"></span>
+      <span id="connText">Conectar</span>
+    </div>
+  </div>
+
+  <div class="score">
+    <div class="score-item"><div class="label">Tú</div><div class="val me" id="scoreMe">0</div></div>
+    <div class="score-sep">—</div>
+    <div class="score-item"><div class="label">Empates</div><div class="val draw" id="scoreDraw">0</div></div>
+    <div class="score-sep">—</div>
+    <div class="score-item"><div class="label">Rival</div><div class="val them" id="scoreThem">0</div></div>
+  </div>
+
+  <div class="status choosing" id="status">Elige tu jugada</div>
+
+  <!-- Arena: shows both choices during reveal -->
+  <div class="arena" id="arena">
+    <div class="arena-side">
+      <div class="who">Tú</div>
+      <div class="arena-icon hidden" id="arenaMe">❓</div>
+    </div>
+    <div class="arena-vs">VS</div>
+    <div class="arena-side">
+      <div class="who">Rival</div>
+      <div class="arena-icon hidden" id="arenaThem">❓</div>
+    </div>
+  </div>
+
+  <div class="result-msg" id="resultMsg"></div>
+
+  <!-- Choice buttons -->
+  <div class="choices" id="choices"></div>
+
+  <button class="btn btn-accent" id="btnSend" disabled onclick="lockAndSend()">
+    ✅ ¡Listo! Enviar elección
+  </button>
+  <button class="btn btn-ghost" id="btnNext" style="display:none" onclick="nextRound()">
+    🔄 Siguiente ronda
+  </button>
+</div>
+
+<button class="log-toggle" onclick="document.getElementById('logPanel').classList.toggle('show')">📋</button>
+<div class="log-panel" id="logPanel"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  PIEDRA PAPEL TIJERAS LAGARTO SPOCK — Via IR
+// ============================================================
+
+const CH340_VID=0x1A86,CH340_PID=0x7523;
+const CARRIER_ON=0x55,CARRIER_OFF=0xFF,US_PER_BYTE=130.208;
+const BIT_PATTERN=[7,6,7,6,6,7,6,6,7,6];
+const PREAMBLE_BYTES=Math.round(20000/US_PER_BYTE);
+
+// Game data
+const MOVES = [
+  {id:0, name:'Piedra',  emoji:'🪨'},
+  {id:1, name:'Papel',   emoji:'📄'},
+  {id:2, name:'Tijeras', emoji:'✂️'},
+  {id:3, name:'Lagarto', emoji:'🦎'},
+  {id:4, name:'Spock',   emoji:'🖖'},
+];
+
+// wins[a][b] = true means a beats b
+// Rock(0) beats Scissors(2), Lizard(3)
+// Paper(1) beats Rock(0), Spock(4)
+// Scissors(2) beats Paper(1), Lizard(3)
+// Lizard(3) beats Spock(4), Paper(1)
+// Spock(4) beats Scissors(2), Rock(0)
+const WINS = {
+  0: {2:'Piedra aplasta Tijeras', 3:'Piedra aplasta Lagarto'},
+  1: {0:'Papel cubre Piedra', 4:'Papel refuta a Spock'},
+  2: {1:'Tijeras corta Papel', 3:'Tijeras decapita Lagarto'},
+  3: {4:'Lagarto envenena a Spock', 1:'Lagarto devora Papel'},
+  4: {2:'Spock rompe Tijeras', 0:'Spock vaporiza Piedra'},
+};
+
+let device=null, rxActive=false;
+let myChoice=null, theirChoice=null;
+let state='choosing'; // choosing, locked, waiting, reveal
+let scoreMe=0, scoreThem=0, scoreDraw=0;
+let opponentReady=false;
+
+// ============================================================
+//  IR Communication (identical to other apps)
+// ============================================================
+
+function encode1200Byte(byte){
+  const bits=[0];for(let i=0;i<8;i++)bits.push((byte>>i)&1);bits.push(1);
+  const out=[];
+  for(let i=0;i<10;i++){const c=BIT_PATTERN[i];const v=bits[i]===0?CARRIER_ON:CARRIER_OFF;
+    for(let j=0;j<c;j++)out.push(v);}
+  return out;
+}
+
+function buildIRFrame(data){
+  const buf=[];
+  for(let i=0;i<PREAMBLE_BYTES;i++)buf.push(CARRIER_ON);
+  const sil=Math.round(2000/US_PER_BYTE);
+  for(let i=0;i<sil;i++)buf.push(CARRIER_OFF);
+  buf.push(...encode1200Byte(0xAA));buf.push(...encode1200Byte(0x55));
+  buf.push(...encode1200Byte(data.length));
+  let xor=0;for(const b of data){buf.push(...encode1200Byte(b));xor^=b;}
+  buf.push(...encode1200Byte(xor));
+  for(let i=0;i<20;i++)buf.push(CARRIER_OFF);
+  return new Uint8Array(buf);
+}
+
+async function ch340Write(req,val,idx){
+  await device.controlTransferOut({requestType:'vendor',recipient:'device',request:req,value:val,index:idx});
+}
+async function setBaud(rate){
+  const r={1200:{f:0xB201,d:0x0038},76800:{f:0xB203,d:0x0038}};
+  const b=r[rate];if(!b)return;
+  await ch340Write(0x9A,0x2518,b.f);await ch340Write(0x9A,0x0F2C,b.d);
+}
+async function ch340Init(){
+  await ch340Write(0xA1,0,0);await setBaud(1200);
+  await ch340Write(0x9A,0x2518,0x00C3);await ch340Write(0xA4,0x009F,0);
+}
+
+async function irSend(data){
+  if(!device)return;
+  try{
+    rxActive=false;await new Promise(r=>setTimeout(r,30));
+    await setBaud(76800);await new Promise(r=>setTimeout(r,10));
+    const frame=buildIRFrame(data);
+    await device.transferOut(2,frame);
+    log('📤 TX: ['+data.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join(' ')+']','ok');
+    await new Promise(r=>setTimeout(r,frame.length*US_PER_BYTE/1000+30));
+    await setBaud(1200);await new Promise(r=>setTimeout(r,10));
+    startRx();
+  }catch(e){log('❌ TX: '+e.message,'err');}
+}
+
+let syncState=0,frameLen=0,frameData=[];
+function processRxByte(byte){
+  switch(syncState){
+    case 0:if(byte===0xAA)syncState=1;break;
+    case 1:if(byte===0x55){syncState=2;frameData=[];}else if(byte!==0xAA)syncState=0;break;
+    case 2:frameLen=byte;if(frameLen===0||frameLen>20)syncState=0;else{syncState=3;frameData=[];}break;
+    case 3:frameData.push(byte);
+      if(frameData.length===frameLen+1){
+        let xor=0;for(let i=0;i<frameLen;i++)xor^=frameData[i];
+        if(xor===frameData[frameLen])handleMessage(frameData.slice(0,frameLen));
+        else log('❌ Checksum','err');
+        syncState=0;
+      }break;
+  }
+}
+async function startRx(){
+  rxActive=true;
+  while(rxActive&&device){
+    try{const r=await device.transferIn(2,64);
+      if(r.data&&r.data.byteLength>0){const a=new Uint8Array(r.data.buffer);for(const b of a)processRxByte(b);}
+    }catch(e){if(rxActive&&e.message&&!e.message.includes('timed')&&!e.message.includes('transfer')){log('RX: '+e.message,'err');break;}}
+  }
+}
+
+// ============================================================
+//  Game Protocol
+//  READY:  [0x47]           — "I've locked my choice"
+//  CHOICE: [0x43, move_id]  — the actual choice (sent after both ready)
+// ============================================================
+
+function handleMessage(data){
+  const type=data[0];
+  log('📥 RX: type='+String.fromCharCode(type)+' data='+data.slice(1).join(','),'info');
+
+  if(type===0x47){ // READY
+    opponentReady=true;
+    log('👤 Rival listo','ok');
+    if(state==='waiting'){
+      // Both ready → send our choice
+      sendChoice();
+    } else if(state==='choosing'){
+      toast('El rival ya ha elegido, ¡elige tú!');
+    } else if(state==='locked'){
+      // We were locked but hadn't sent READY yet? Shouldn't happen
+      sendChoice();
+    }
+  }
+  else if(type===0x43){ // CHOICE
+    theirChoice=data[1];
+    log('🎴 Rival eligió: '+MOVES[theirChoice].emoji+' '+MOVES[theirChoice].name,'ok');
+    if(myChoice!==null){
+      revealResult();
+    }
+  }
+}
+
+// ============================================================
+//  Game Logic
+// ============================================================
+
+function lockAndSend(){
+  if(myChoice===null||!device)return;
+  state='locked';
+  disableChoices(true);
+  setStatus('locked','⏳ Bloqueado · Enviando...');
+  document.getElementById('btnSend').disabled=true;
+
+  // Show our choice in arena
+  const me=document.getElementById('arenaMe');
+  me.textContent=MOVES[myChoice].emoji;
+  me.className='arena-icon bounce';
+
+  // Send READY
+  irSend([0x47]);
+  state='waiting';
+  setStatus('locked','⏳ Esperando al rival...');
+
+  // If opponent was already ready, send choice now
+  if(opponentReady){
+    setTimeout(()=>sendChoice(),300);
+  }
+}
+
+function sendChoice(){
+  log('📤 Enviando elección: '+MOVES[myChoice].name,'info');
+  irSend([0x43, myChoice]);
+  setStatus('locked','⏳ Elección enviada, esperando rival...');
+}
+
+function revealResult(){
+  state='reveal';
+
+  // Show opponent's choice
+  const them=document.getElementById('arenaThem');
+  them.textContent=MOVES[theirChoice].emoji;
+  them.className='arena-icon bounce';
+
+  // Determine winner
+  let result, msg;
+  if(myChoice===theirChoice){
+    result='tie';
+    msg='¡Empate!';
+    scoreDraw++;
+  } else if(WINS[myChoice] && WINS[myChoice][theirChoice]){
+    result='win';
+    msg=WINS[myChoice][theirChoice];
+    scoreMe++;
+  } else {
+    result='lose';
+    msg=WINS[theirChoice][myChoice];
+    scoreThem++;
+  }
+
+  // Update UI
+  updateScores();
+  document.getElementById('resultMsg').textContent=msg;
+  document.getElementById('resultMsg').className='result-msg bounce';
+
+  const meIcon=document.getElementById('arenaMe');
+  const themIcon=document.getElementById('arenaThem');
+
+  if(result==='win'){
+    setStatus('win','🏆 ¡Ganaste esta ronda!');
+    meIcon.classList.add('win');themIcon.classList.add('lose');
+    if(navigator.vibrate)navigator.vibrate([100,50,100]);
+  } else if(result==='lose'){
+    setStatus('lose','💀 Perdiste esta ronda');
+    meIcon.classList.add('lose');themIcon.classList.add('win');
+    meIcon.classList.add('shake');
+  } else {
+    setStatus('tie','🤝 ¡Empate!');
+  }
+
+  // Show next round button
+  document.getElementById('btnSend').style.display='none';
+  document.getElementById('btnNext').style.display='';
+
+  // Highlight winning/losing choice buttons
+  document.querySelectorAll('.choice-btn').forEach(btn=>{
+    const id=parseInt(btn.dataset.id);
+    if(result==='win'&&id===myChoice) btn.classList.add('winner');
+    else if(result==='lose'&&id===theirChoice) btn.classList.add('winner');
+    else if(result==='win'&&id===theirChoice) btn.classList.add('loser');
+    else if(result==='lose'&&id===myChoice) btn.classList.add('loser');
+  });
+}
+
+function nextRound(){
+  myChoice=null;theirChoice=null;opponentReady=false;
+  state='choosing';
+
+  // Reset UI
+  document.getElementById('arenaMe').textContent='❓';
+  document.getElementById('arenaMe').className='arena-icon hidden';
+  document.getElementById('arenaThem').textContent='❓';
+  document.getElementById('arenaThem').className='arena-icon hidden';
+  document.getElementById('resultMsg').textContent='';
+  document.getElementById('btnSend').style.display='';
+  document.getElementById('btnSend').disabled=true;
+  document.getElementById('btnNext').style.display='none';
+
+  setStatus('choosing','Elige tu jugada');
+  buildChoices();
+}
+
+// ============================================================
+//  UI
+// ============================================================
+
+function buildChoices(){
+  const c=document.getElementById('choices');
+  c.innerHTML=MOVES.map(m=>`
+    <div class="choice-btn" data-id="${m.id}" onclick="selectChoice(${m.id})">
+      <span class="emoji">${m.emoji}</span>
+      <span class="name">${m.name}</span>
+    </div>
+  `).join('');
+}
+
+function selectChoice(id){
+  if(state!=='choosing')return;
+  myChoice=id;
+  document.querySelectorAll('.choice-btn').forEach(b=>{
+    b.classList.toggle('selected',parseInt(b.dataset.id)===id);
+  });
+  document.getElementById('btnSend').disabled=!device;
+  setStatus('choosing','Has elegido '+MOVES[id].emoji+' '+MOVES[id].name);
+}
+
+function disableChoices(disabled){
+  document.querySelectorAll('.choice-btn').forEach(b=>{
+    if(disabled)b.classList.add('disabled');else b.classList.remove('disabled');
+    b.classList.remove('winner','loser');
+  });
+}
+
+function updateScores(){
+  document.getElementById('scoreMe').textContent=scoreMe;
+  document.getElementById('scoreThem').textContent=scoreThem;
+  document.getElementById('scoreDraw').textContent=scoreDraw;
+}
+
+function setStatus(type,text){
+  const el=document.getElementById('status');el.className='status '+type;el.textContent=text;
+}
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);}
+function log(msg,type=''){const p=document.getElementById('logPanel');const l=document.createElement('div');
+  if(type)l.className='log-'+type;
+  l.textContent='['+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] '+msg;
+  p.appendChild(l);p.scrollTop=p.scrollHeight;}
+
+// ============================================================
+//  Connection
+// ============================================================
+
+function setConnected(on){
+  document.getElementById('connDot').className='dot '+(on?'on':'off');
+  document.getElementById('connText').textContent=on?'OK':'Conectar';
+  if(myChoice!==null)document.getElementById('btnSend').disabled=!on;
+}
+
+async function toggleConnection(){
+  if(device){
+    rxActive=false;
+    try{await device.releaseInterface(0);await device.close();}catch(e){}
+    device=null;log('🔌 Desconectado','warn');setConnected(false);
+  }else{
+    if(!('usb' in navigator)){toast('Chrome Android necesario');return;}
+    try{
+      device=await navigator.usb.requestDevice({filters:[{vendorId:CH340_VID,productId:CH340_PID}]});
+      await device.open();
+      if(!device.configuration)await device.selectConfiguration(1);
+      await device.claimInterface(0);await ch340Init();
+      log('✅ Conectado','ok');setConnected(true);toast('Dongle conectado');startRx();
+    }catch(e){log('❌ '+e.message,'err');device=null;}
+  }
+}
+
+// Init
+buildChoices();
+window.addEventListener('DOMContentLoaded',()=>{
+  if(!('usb' in navigator))log('⚠️ WebUSB no disponible','err');
+  else log('✅ WebUSB ok · RPSLS IR','ok');
+});
+window.addEventListener('beforeunload',()=>{rxActive=false;if(device)try{device.releaseInterface(0);device.close();}catch(e){}});
+</script>
+</body>
+</html>
