@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Proyecto Ícaro — Mando IR v3</title>
+<meta name="theme-color" content="#08080f">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#08080f;--surface:rgba(255,255,255,0.05);--surface2:rgba(255,255,255,0.08);
+--surface3:rgba(255,255,255,0.12);--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+--text:#eaeaf2;--dim:#7a7a96;--mid:#a0a0b8;--accent:#6366f1;--accent2:#818cf8;
+--aglow:rgba(99,102,241,0.35);--green:#34d399;--gglow:rgba(52,211,153,0.25);
+--red:#f87171;--rglow:rgba(248,113,113,0.25);--orange:#fbbf24;--cyan:#22d3ee;
+--rad:18px;--radsm:12px}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);
+min-height:100dvh;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+.bg-orbs{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.bg-orbs span{position:absolute;border-radius:50%;filter:blur(90px);opacity:.3}
+.bg-orbs .o1{width:320px;height:320px;background:var(--accent);top:-100px;left:-80px;animation:of 14s ease-in-out infinite alternate}
+.bg-orbs .o2{width:260px;height:260px;background:#e11d48;bottom:10%;right:-60px;animation:of 18s ease-in-out infinite alternate-reverse}
+@keyframes of{0%{transform:translate(0,0) scale(1)}100%{transform:translate(25px,30px) scale(1.1)}}
+.app{position:relative;z-index:1;max-width:440px;margin:0 auto;padding:16px 16px 100px}
+.nav-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(8,8,15,.85);
+backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);
+display:flex;justify-content:center;padding:0 8px;padding-bottom:env(safe-area-inset-bottom,8px)}
+.nav-btn{flex:1;max-width:90px;display:flex;flex-direction:column;align-items:center;gap:3px;
+padding:10px 4px 8px;background:none;border:none;color:var(--dim);font-family:'Outfit';
+font-size:10px;font-weight:500;cursor:pointer;transition:color .2s}
+.nav-btn .ni{font-size:22px}.nav-btn.active{color:var(--accent2)}.nav-btn:active{transform:scale(.95)}
+.header{text-align:center;padding:16px 0 20px}
+.header h1{font-size:24px;font-weight:800;letter-spacing:-.5px;
+background:linear-gradient(135deg,#fff,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .sub{font-size:12px;color:var(--dim);margin-top:4px}
+.header .badge{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:20px;
+font-size:10px;font-weight:600;background:rgba(52,211,153,.12);color:var(--green);border:1px solid rgba(52,211,153,.2)}
+.conn-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--radsm);
+background:var(--surface);border:1px solid var(--border);margin-bottom:16px;cursor:pointer;transition:background .2s}
+.conn-bar:active{background:var(--surface2)}
+.cd{width:10px;height:10px;border-radius:50%;flex-shrink:0;transition:all .3s}
+.cd.off{background:var(--red);box-shadow:0 0 8px var(--rglow)}
+.cd.on{background:var(--green);box-shadow:0 0 8px var(--gglow);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.cl{font-size:13px;font-weight:500;flex:1}.ca{font-size:12px;font-weight:600;color:var(--accent2);
+padding:6px 14px;border-radius:8px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2)}
+.page{display:none}.page.active{display:block;animation:fi .25s ease}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--surface);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+border:1px solid var(--border);border-radius:var(--rad);padding:18px;margin-bottom:14px}
+.ch{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);
+margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.ch .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.brand-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.bc{padding:10px 4px;border-radius:var(--radsm);background:var(--surface2);border:1px solid var(--border);
+text-align:center;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--mid)}
+.bc:active{transform:scale(.96)}
+.bc.active{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:var(--accent2);
+box-shadow:0 0 16px rgba(99,102,241,.15)}
+.remote-pad{background:var(--surface2);border-radius:var(--rad);padding:20px 16px;
+display:flex;flex-direction:column;align-items:center;gap:16px}
+.rr{display:flex;align-items:center;justify-content:center;gap:12px;width:100%}
+.rb{display:flex;align-items:center;justify-content:center;border:1px solid var(--border2);
+background:var(--surface3);color:var(--text);border-radius:14px;font-family:'Outfit';
+font-size:13px;font-weight:600;cursor:pointer;transition:all .12s;position:relative;overflow:hidden}
+.rb:active{transform:scale(.93);background:rgba(99,102,241,.2);border-color:var(--accent)}
+.rb:disabled{opacity:.3;pointer-events:none}
+.rb.power{width:64px;height:64px;border-radius:50%;background:rgba(248,113,113,.12);
+border-color:rgba(248,113,113,.3);color:var(--red);font-size:24px}
+.rb.power:active{background:rgba(248,113,113,.3)}
+.rb.wide{flex:1;height:50px}.rb.circle{width:50px;height:50px;border-radius:50%;font-size:18px}
+.rb .rip{position:absolute;border-radius:50%;background:rgba(255,255,255,.15);
+transform:scale(0);animation:rip .5s ease-out;pointer-events:none}
+@keyframes rip{to{transform:scale(3);opacity:0}}
+.dpad{display:grid;grid-template-areas:". up ." "left ok right" ". down .";
+grid-template-columns:50px 60px 50px;grid-template-rows:50px 60px 50px;gap:4px}
+.dpad .rb{width:100%;height:100%;border-radius:14px}
+.dpad .rb[data-dir=up]{grid-area:up}.dpad .rb[data-dir=down]{grid-area:down}
+.dpad .rb[data-dir=left]{grid-area:left}.dpad .rb[data-dir=right]{grid-area:right}
+.dpad .rb.ok{grid-area:ok;border-radius:50%;background:rgba(99,102,241,.15);
+border-color:rgba(99,102,241,.3);color:var(--accent2);font-weight:700}
+.sl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);text-align:center;width:100%}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.numpad .rb{height:48px;border-radius:var(--radsm)}
+.log-area{background:rgba(0,0,0,.35);border-radius:var(--radsm);padding:12px;
+font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;max-height:160px;
+overflow-y:auto;color:var(--dim)}
+.log-area .log-ok{color:var(--green)}.log-area .log-err{color:var(--red)}
+.log-area .log-warn{color:var(--orange)}.log-area .log-info{color:var(--cyan)}
+.tip-box{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.15);
+border-radius:var(--radsm);padding:14px;font-size:12px;color:var(--dim);line-height:1.6}
+.tip-box strong{color:var(--text)}
+.btn{width:100%;padding:14px;border:none;border-radius:var(--radsm);font-family:'Outfit';
+font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;
+align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.97)}.btn:disabled{opacity:.35;pointer-events:none}
+.btn-accent{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 20px var(--aglow)}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+input[type=text],select{width:100%;padding:12px 16px;border-radius:var(--radsm);background:var(--surface2);
+border:1px solid var(--border);color:var(--text);font-family:'Outfit';font-size:14px;outline:none}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+background:var(--surface3);backdrop-filter:blur(20px);border:1px solid var(--border2);
+border-radius:12px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--text);
+z-index:200;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.sending-indicator{display:none;align-items:center;gap:8px;justify-content:center;
+padding:8px;color:var(--cyan);font-size:12px;font-weight:500}
+.sending-indicator.active{display:flex}
+.sending-indicator .spinner{width:16px;height:16px;border:2px solid var(--border);
+border-top-color:var(--cyan);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="bg-orbs"><span class="o1"></span><span class="o2"></span></div>
+<div class="app">
+  <div class="header">
+    <h1>Proyecto Ícaro</h1>
+    <div class="sub">Mando Universal IR · WebUSB</div>
+    <div class="badge">v3 — Modulación 38kHz real</div>
+  </div>
+  <div class="conn-bar" onclick="toggleConnection()">
+    <span class="cd off" id="connDot"></span>
+    <span class="cl" id="connLabel">Dongle desconectado</span>
+    <span class="ca" id="connAction">Conectar</span>
+  </div>
+  <div class="sending-indicator" id="sendingInd"><div class="spinner"></div><span>Enviando señal IR...</span></div>
+
+  <!-- PAGE: REMOTE -->
+  <div class="page active" id="pageRemote">
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Selecciona marca de TV</div>
+      <div class="brand-grid" id="brandGrid"></div>
+      <div style="font-size:11px;color:var(--dim);text-align:center">Samsung usa protocolo Samsung · El resto usa NEC</div>
+    </div>
+    <div class="remote-pad" id="remotePad">
+      <div class="rr"><button class="rb power" data-cmd="power" disabled>⏻</button></div>
+      <div class="sl">— Volumen / Canales —</div>
+      <div class="rr">
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;flex:1">
+          <button class="rb wide" data-cmd="vol_up" disabled>🔊 Vol +</button>
+          <button class="rb wide" data-cmd="vol_down" disabled>🔉 Vol −</button>
+        </div>
+        <button class="rb circle" data-cmd="mute" disabled>🔇</button>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;flex:1">
+          <button class="rb wide" data-cmd="ch_up" disabled>CH ▲</button>
+          <button class="rb wide" data-cmd="ch_down" disabled>CH ▼</button>
+        </div>
+      </div>
+      <div class="sl">— Navegación —</div>
+      <div class="dpad">
+        <button class="rb" data-dir="up" data-cmd="up" disabled>▲</button>
+        <button class="rb" data-dir="left" data-cmd="left" disabled>◀</button>
+        <button class="rb ok" data-cmd="ok" disabled>OK</button>
+        <button class="rb" data-dir="right" data-cmd="right" disabled>▶</button>
+        <button class="rb" data-dir="down" data-cmd="down" disabled>▼</button>
+      </div>
+      <div class="rr" style="gap:8px">
+        <button class="rb wide" data-cmd="source" disabled>📺 Source</button>
+        <button class="rb wide" data-cmd="menu" disabled>☰ Menú</button>
+        <button class="rb wide" data-cmd="back" disabled>↩ Volver</button>
+      </div>
+      <div class="sl">— Numérico —</div>
+      <div class="numpad">
+        <button class="rb" data-cmd="n1" disabled>1</button><button class="rb" data-cmd="n2" disabled>2</button>
+        <button class="rb" data-cmd="n3" disabled>3</button><button class="rb" data-cmd="n4" disabled>4</button>
+        <button class="rb" data-cmd="n5" disabled>5</button><button class="rb" data-cmd="n6" disabled>6</button>
+        <button class="rb" data-cmd="n7" disabled>7</button><button class="rb" data-cmd="n8" disabled>8</button>
+        <button class="rb" data-cmd="n9" disabled>9</button><button class="rb" data-cmd="info" disabled>ℹ️</button>
+        <button class="rb" data-cmd="n0" disabled>0</button><button class="rb" data-cmd="exit" disabled>✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: MANUAL -->
+  <div class="page" id="pageManual">
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Envío Manual</div>
+      <p style="font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5">
+        Código NEC/Samsung completo en hex (4 bytes = 8 caracteres). Ej: <strong>E0E040BF</strong>
+      </p>
+      <input type="text" id="manualHex" placeholder="Ej: 20DF10EF (LG Power)">
+      <div style="margin-top:10px">
+        <select id="manualProto"><option value="nec">Protocolo NEC</option><option value="samsung">Protocolo Samsung</option></select>
+      </div>
+      <div style="margin-top:10px"><button class="btn btn-accent" id="btnManualSend" disabled onclick="sendManual()">📤 Enviar código</button></div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Códigos de Referencia</div>
+      <div class="log-area" style="max-height:200px;font-size:10px">
+        <div class="log-info">— Samsung (proto Samsung) —</div>
+        <div>Power: E0E040BF · Vol+: E0E0E01F · Vol-: E0E0D02F</div>
+        <div>Mute: E0E0F00F · CH+: E0E048B7 · CH-: E0E008F7</div>
+        <div style="margin-top:6px" class="log-info">— LG (proto NEC) —</div>
+        <div>Power: 20DF10EF · Vol+: 20DF40BF · Vol-: 20DFC03F</div>
+        <div>P-ON: 20DF23DC · P-OFF: 20DFA35C</div>
+        <div style="margin-top:6px" class="log-info">— Hisense (proto NEC) —</div>
+        <div>Power: 00BF40BF · Vol+: 00BFE01F · Vol-: 00BFD02F</div>
+      </div>
+    </div>
+    <div class="tip-box">
+      💡 <strong>Cómo funciona:</strong> CH340G a <strong>76800 baud</strong>. El byte 0x55 (01010101) genera onda cuadrada 38.4kHz. Alternando 0x55 (carrier ON) y 0xFF (carrier OFF) con timing NEC/Samsung se generan señales IR reales. Cada frame son ~500 bytes enviados de golpe por USB bulk transfer.
+    </div>
+  </div>
+
+  <!-- PAGE: LOG -->
+  <div class="page" id="pageLog">
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Log de Actividad</div>
+      <div class="log-area" id="logArea" style="max-height:55vh">
+        <div class="log-info">→ Proyecto Ícaro · Mando IR v3</div>
+        <div class="log-info">→ Modulación 38kHz via 76800 baud + 0x55</div>
+      </div>
+    </div>
+    <button class="btn btn-ghost" onclick="document.getElementById('logArea').innerHTML=''">🗑️ Limpiar log</button>
+  </div>
+
+  <!-- PAGE: HELP -->
+  <div class="page" id="pageHelp">
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Cómo Funciona</div>
+      <div style="font-size:13px;color:var(--mid);line-height:1.7">
+        <p><strong style="color:var(--text)">El problema:</strong> Las TVs esperan IR modulada a 38kHz. El CH340G solo envía bytes serie.</p>
+        <p style="margin-top:10px"><strong style="color:var(--text)">La solución:</strong></p>
+        <p style="margin-top:6px">1. CH340G a <strong style="color:var(--cyan)">76800 baud</strong> → cada bit = 13µs</p>
+        <p style="margin-top:4px">2. Byte <strong style="color:var(--cyan)">0x55</strong> = 01010101 → onda 38.4kHz ✓</p>
+        <p style="margin-top:4px">3. Byte <strong style="color:var(--cyan)">0xFF</strong> = silencio (no carrier)</p>
+        <p style="margin-top:10px"><strong style="color:var(--text)">Protocolo NEC (32 bits):</strong></p>
+        <p style="margin-top:4px">• Header: 9ms carrier + 4.5ms silencio</p>
+        <p style="margin-top:4px">• Bit 0: 560µs carrier + 560µs silencio</p>
+        <p style="margin-top:4px">• Bit 1: 560µs carrier + 1690µs silencio</p>
+        <p style="margin-top:10px"><strong style="color:var(--text)">Protocolo Samsung (32 bits):</strong></p>
+        <p style="margin-top:4px">• Header: 4.5ms carrier + 4.5ms silencio</p>
+        <p style="margin-top:4px">• Bits: igual que NEC</p>
+        <p style="margin-top:10px"><strong style="color:var(--text)">Frame completo:</strong> ~500 bytes enviados por USB en un solo bulk transfer. Se repite 2 veces con 40ms de gap.</p>
+      </div>
+    </div>
+    <div class="tip-box">💡 <strong>Verificar emisión:</strong> El LED IR (940nm) es invisible. Míralo por la <strong>cámara frontal</strong> de otro móvil — se verá como luz violeta parpadeando.</div>
+  </div>
+</div>
+
+<nav class="nav-bar">
+  <button class="nav-btn active" onclick="showPage('pageRemote',this)"><span class="ni">📺</span>Mando</button>
+  <button class="nav-btn" onclick="showPage('pageManual',this)"><span class="ni">✏️</span>Manual</button>
+  <button class="nav-btn" onclick="showPage('pageLog',this)"><span class="ni">📋</span>Log</button>
+  <button class="nav-btn" onclick="showPage('pageHelp',this)"><span class="ni">❓</span>Info</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  PROYECTO ÍCARO — MANDO IR v3
+//  Modulación 38kHz real: 76800 baud + byte 0x55 como carrier
+// ============================================================
+
+const CH340_VID = 0x1A86, CH340_PID = 0x7523;
+const CARRIER_ON = 0x55, CARRIER_OFF = 0xFF;
+
+// At 76800 baud: each UART byte = 10 bits * (1/76800)s = 130.208µs
+const US_PER_BYTE = 130.208;
+
+// NEC timing in byte counts
+const NEC_HDR_MARK   = Math.round(9000 / US_PER_BYTE);  // 69
+const NEC_HDR_SPACE  = Math.round(4500 / US_PER_BYTE);  // 35
+const NEC_BIT_MARK   = Math.round(560  / US_PER_BYTE);  // 4
+const NEC_ZERO_SPACE = Math.round(560  / US_PER_BYTE);  // 4
+const NEC_ONE_SPACE  = Math.round(1690 / US_PER_BYTE);  // 13
+const NEC_STOP_MARK  = Math.round(560  / US_PER_BYTE);  // 4
+
+// Samsung header (different from NEC)
+const SAM_HDR_MARK  = Math.round(4500 / US_PER_BYTE);   // 35
+const SAM_HDR_SPACE = Math.round(4500 / US_PER_BYTE);   // 35
+
+// ---- IR Code Database ----
+const IR_DB = {
+  samsung: { name:'Samsung', proto:'samsung',
+    power:[0xE0,0xE0,0x40,0xBF], vol_up:[0xE0,0xE0,0xE0,0x1F], vol_down:[0xE0,0xE0,0xD0,0x2F],
+    ch_up:[0xE0,0xE0,0x48,0xB7], ch_down:[0xE0,0xE0,0x08,0xF7], mute:[0xE0,0xE0,0xF0,0x0F],
+    source:[0xE0,0xE0,0x80,0x7F], menu:[0xE0,0xE0,0x58,0xA7], ok:[0xE0,0xE0,0x16,0xE9],
+    up:[0xE0,0xE0,0x06,0xF9], down:[0xE0,0xE0,0x86,0x79], left:[0xE0,0xE0,0xA6,0x59],
+    right:[0xE0,0xE0,0x46,0xB9], back:[0xE0,0xE0,0x1A,0xE5], exit:[0xE0,0xE0,0xB4,0x4B],
+    info:[0xE0,0xE0,0xF8,0x07],
+    n0:[0xE0,0xE0,0x88,0x77],n1:[0xE0,0xE0,0x20,0xDF],n2:[0xE0,0xE0,0xA0,0x5F],
+    n3:[0xE0,0xE0,0x60,0x9F],n4:[0xE0,0xE0,0x10,0xEF],n5:[0xE0,0xE0,0x90,0x6F],
+    n6:[0xE0,0xE0,0x50,0xAF],n7:[0xE0,0xE0,0x30,0xCF],n8:[0xE0,0xE0,0xB0,0x4F],
+    n9:[0xE0,0xE0,0x70,0x8F]},
+  lg: { name:'LG', proto:'nec',
+    power:[0x20,0xDF,0x10,0xEF], vol_up:[0x20,0xDF,0x40,0xBF], vol_down:[0x20,0xDF,0xC0,0x3F],
+    ch_up:[0x20,0xDF,0x00,0xFF], ch_down:[0x20,0xDF,0x80,0x7F], mute:[0x20,0xDF,0x90,0x6F],
+    source:[0x20,0xDF,0xD0,0x2F], menu:[0x20,0xDF,0xC5,0x3A], ok:[0x20,0xDF,0x22,0xDD],
+    up:[0x20,0xDF,0x02,0xFD], down:[0x20,0xDF,0x82,0x7D], left:[0x20,0xDF,0xE0,0x1F],
+    right:[0x20,0xDF,0x60,0x9F], back:[0x20,0xDF,0x14,0xEB], exit:[0x20,0xDF,0xDA,0x25],
+    info:[0x20,0xDF,0x55,0xAA],
+    n0:[0x20,0xDF,0x08,0xF7],n1:[0x20,0xDF,0x88,0x77],n2:[0x20,0xDF,0x48,0xB7],
+    n3:[0x20,0xDF,0xC8,0x37],n4:[0x20,0xDF,0x28,0xD7],n5:[0x20,0xDF,0xA8,0x57],
+    n6:[0x20,0xDF,0x68,0x97],n7:[0x20,0xDF,0xE8,0x17],n8:[0x20,0xDF,0x18,0xE7],
+    n9:[0x20,0xDF,0x98,0x67]},
+  philips: { name:'Philips', proto:'nec',
+    power:[0x40,0xBF,0x12,0xED], vol_up:[0x40,0xBF,0x10,0xEF], vol_down:[0x40,0xBF,0x11,0xEE],
+    ch_up:[0x40,0xBF,0x20,0xDF], ch_down:[0x40,0xBF,0x21,0xDE], mute:[0x40,0xBF,0x0D,0xF2],
+    source:[0x40,0xBF,0x38,0xC7], menu:[0x40,0xBF,0x54,0xAB], ok:[0x40,0xBF,0x5C,0xA3],
+    up:[0x40,0xBF,0x58,0xA7], down:[0x40,0xBF,0x59,0xA6], left:[0x40,0xBF,0x5A,0xA5],
+    right:[0x40,0xBF,0x5B,0xA4], back:[0x40,0xBF,0x0A,0xF5], exit:[0x40,0xBF,0x0A,0xF5],
+    info:[0x40,0xBF,0x0F,0xF0],
+    n0:[0x40,0xBF,0x00,0xFF],n1:[0x40,0xBF,0x01,0xFE],n2:[0x40,0xBF,0x02,0xFD],
+    n3:[0x40,0xBF,0x03,0xFC],n4:[0x40,0xBF,0x04,0xFB],n5:[0x40,0xBF,0x05,0xFA],
+    n6:[0x40,0xBF,0x06,0xF9],n7:[0x40,0xBF,0x07,0xF8],n8:[0x40,0xBF,0x08,0xF7],
+    n9:[0x40,0xBF,0x09,0xF6]},
+  panasonic: { name:'Panasonic', proto:'nec',
+    power:[0x40,0x04,0x00,0xBD], vol_up:[0x40,0x04,0x00,0x20], vol_down:[0x40,0x04,0x00,0xA0],
+    ch_up:[0x40,0x04,0x00,0x2C], ch_down:[0x40,0x04,0x00,0xAC], mute:[0x40,0x04,0x00,0x30],
+    source:[0x40,0x04,0x00,0xA0], menu:[0x40,0x04,0x00,0x06], ok:[0x40,0x04,0x00,0x49],
+    up:[0x40,0x04,0x00,0x52], down:[0x40,0x04,0x00,0xD2], left:[0x40,0x04,0x00,0x72],
+    right:[0x40,0x04,0x00,0xF2], back:[0x40,0x04,0x00,0x2B], exit:[0x40,0x04,0x00,0xCB],
+    info:[0x40,0x04,0x00,0x39],
+    n0:[0x40,0x04,0x00,0x09],n1:[0x40,0x04,0x00,0x89],n2:[0x40,0x04,0x00,0x49],
+    n3:[0x40,0x04,0x00,0xC9],n4:[0x40,0x04,0x00,0x29],n5:[0x40,0x04,0x00,0xA9],
+    n6:[0x40,0x04,0x00,0x69],n7:[0x40,0x04,0x00,0xE9],n8:[0x40,0x04,0x00,0x19],
+    n9:[0x40,0x04,0x00,0x99]},
+  hisense: { name:'Hisense', proto:'nec',
+    power:[0x00,0xBF,0x40,0xBF], vol_up:[0x00,0xBF,0xE0,0x1F], vol_down:[0x00,0xBF,0xD0,0x2F],
+    ch_up:[0x00,0xBF,0x48,0xB7], ch_down:[0x00,0xBF,0x08,0xF7], mute:[0x00,0xBF,0xF0,0x0F],
+    source:[0x00,0xBF,0x80,0x7F], menu:[0x00,0xBF,0x58,0xA7], ok:[0x00,0xBF,0x16,0xE9],
+    up:[0x00,0xBF,0x06,0xF9], down:[0x00,0xBF,0x86,0x79], left:[0x00,0xBF,0xA6,0x59],
+    right:[0x00,0xBF,0x46,0xB9], back:[0x00,0xBF,0x1A,0xE5], exit:[0x00,0xBF,0xB4,0x4B],
+    info:[0x00,0xBF,0xF8,0x07],
+    n0:[0x00,0xBF,0x88,0x77],n1:[0x00,0xBF,0x20,0xDF],n2:[0x00,0xBF,0xA0,0x5F],
+    n3:[0x00,0xBF,0x60,0x9F],n4:[0x00,0xBF,0x10,0xEF],n5:[0x00,0xBF,0x90,0x6F],
+    n6:[0x00,0xBF,0x50,0xAF],n7:[0x00,0xBF,0x30,0xCF],n8:[0x00,0xBF,0xB0,0x4F],
+    n9:[0x00,0xBF,0x70,0x8F]},
+  tcl: { name:'TCL/Roku', proto:'nec',
+    power:[0x57,0xE3,0x40,0xBF], vol_up:[0x57,0xE3,0xE0,0x1F], vol_down:[0x57,0xE3,0xD0,0x2F],
+    ch_up:[0x57,0xE3,0x48,0xB7], ch_down:[0x57,0xE3,0x08,0xF7], mute:[0x57,0xE3,0xF0,0x0F],
+    source:[0x57,0xE3,0x80,0x7F], menu:[0x57,0xE3,0x58,0xA7], ok:[0x57,0xE3,0x16,0xE9],
+    up:[0x57,0xE3,0x06,0xF9], down:[0x57,0xE3,0x86,0x79], left:[0x57,0xE3,0xA6,0x59],
+    right:[0x57,0xE3,0x46,0xB9], back:[0x57,0xE3,0x1A,0xE5], exit:[0x57,0xE3,0xB4,0x4B],
+    info:[0x57,0xE3,0xF8,0x07],
+    n0:[0x57,0xE3,0x88,0x77],n1:[0x57,0xE3,0x20,0xDF],n2:[0x57,0xE3,0xA0,0x5F],
+    n3:[0x57,0xE3,0x60,0x9F],n4:[0x57,0xE3,0x10,0xEF],n5:[0x57,0xE3,0x90,0x6F],
+    n6:[0x57,0xE3,0x50,0xAF],n7:[0x57,0xE3,0x30,0xCF],n8:[0x57,0xE3,0xB0,0x4F],
+    n9:[0x57,0xE3,0x70,0x8F]},
+  toshiba: { name:'Toshiba', proto:'nec',
+    power:[0x02,0xFD,0x48,0xB7], vol_up:[0x02,0xFD,0x58,0xA7], vol_down:[0x02,0xFD,0x78,0x87],
+    ch_up:[0x02,0xFD,0xD8,0x27], ch_down:[0x02,0xFD,0xF8,0x07], mute:[0x02,0xFD,0x08,0xF7],
+    source:[0x02,0xFD,0x28,0xD7], menu:[0x02,0xFD,0xC8,0x37], ok:[0x02,0xFD,0x98,0x67],
+    up:[0x02,0xFD,0x18,0xE7], down:[0x02,0xFD,0x9A,0x65], left:[0x02,0xFD,0xDA,0x25],
+    right:[0x02,0xFD,0x5A,0xA5], back:[0x02,0xFD,0xA8,0x57], exit:[0x02,0xFD,0xA8,0x57],
+    info:[0x02,0xFD,0xE8,0x17],
+    n0:[0x02,0xFD,0x00,0xFF],n1:[0x02,0xFD,0x80,0x7F],n2:[0x02,0xFD,0x40,0xBF],
+    n3:[0x02,0xFD,0xC0,0x3F],n4:[0x02,0xFD,0x20,0xDF],n5:[0x02,0xFD,0xA0,0x5F],
+    n6:[0x02,0xFD,0x60,0x9F],n7:[0x02,0xFD,0xE0,0x1F],n8:[0x02,0xFD,0x10,0xEF],
+    n9:[0x02,0xFD,0x90,0x6F]},
+};
+
+// ============================================================
+//  NEC / Samsung ENCODER
+// ============================================================
+
+function fill(arr, byte, count) { for (let i=0;i<count;i++) arr.push(byte); }
+
+function encodeNEC(code) {
+  const buf = [];
+  fill(buf, CARRIER_ON, NEC_HDR_MARK);    // 9ms carrier
+  fill(buf, CARRIER_OFF, NEC_HDR_SPACE);   // 4.5ms silence
+  for (let bi=0;bi<4;bi++) {
+    const b = code[bi];
+    for (let i=0;i<8;i++) {
+      const bit = (b >> i) & 1;  // LSB first
+      fill(buf, CARRIER_ON, NEC_BIT_MARK);
+      fill(buf, CARRIER_OFF, bit ? NEC_ONE_SPACE : NEC_ZERO_SPACE);
+    }
+  }
+  fill(buf, CARRIER_ON, NEC_STOP_MARK);    // stop mark
+  return buf;
+}
+
+function encodeSamsung(code) {
+  const buf = [];
+  fill(buf, CARRIER_ON, SAM_HDR_MARK);    // 4.5ms carrier
+  fill(buf, CARRIER_OFF, SAM_HDR_SPACE);   // 4.5ms silence
+  for (let bi=0;bi<4;bi++) {
+    const b = code[bi];
+    for (let i=0;i<8;i++) {
+      const bit = (b >> i) & 1;
+      fill(buf, CARRIER_ON, NEC_BIT_MARK);
+      fill(buf, CARRIER_OFF, bit ? NEC_ONE_SPACE : NEC_ZERO_SPACE);
+    }
+  }
+  fill(buf, CARRIER_ON, NEC_STOP_MARK);
+  return buf;
+}
+
+// ============================================================
+//  WebUSB CH340G Driver
+// ============================================================
+
+let device = null, currentBrand = 'samsung', sending = false;
+
+async function ch340Write(req, val, idx) {
+  await device.controlTransferOut({requestType:'vendor',recipient:'device',request:req,value:val,index:idx});
+}
+
+async function ch340Init() {
+  await ch340Write(0xA1, 0, 0);           // serial init
+  await ch340Write(0x9A, 0x2518, 0xB203); // 76800 baud factor
+  await ch340Write(0x9A, 0x0F2C, 0x0038); // 76800 baud divisor
+  await ch340Write(0x9A, 0x2518, 0x00C3); // LCR 8N1
+  await ch340Write(0xA4, 0x009F, 0);      // modem ctrl DTR+RTS
+}
+
+function setConnected(on) {
+  document.getElementById('connDot').className = 'cd '+(on?'on':'off');
+  document.getElementById('connLabel').textContent = on?'Dongle conectado · 76800 baud':'Dongle desconectado';
+  document.getElementById('connAction').textContent = on?'Desconectar':'Conectar';
+  document.querySelectorAll('.rb[data-cmd]').forEach(b=>b.disabled=!on);
+  document.getElementById('btnManualSend').disabled = !on;
+}
+
+async function toggleConnection() {
+  if (device) {
+    try{await device.releaseInterface(0);await device.close();}catch(e){}
+    device=null; log('🔌 Desconectado','warn'); setConnected(false); toast('Desconectado');
+  } else {
+    if (!('usb' in navigator)){log('❌ WebUSB no disponible','err');toast('Necesitas Chrome Android');return;}
+    try {
+      log('Solicitando dispositivo USB...','info');
+      device = await navigator.usb.requestDevice({filters:[{vendorId:CH340_VID,productId:CH340_PID}]});
+      await device.open();
+      if (!device.configuration) await device.selectConfiguration(1);
+      await device.claimInterface(0);
+      await ch340Init();
+      log('✅ CH340G conectado · 76800 baud · Modulación 38kHz lista','ok');
+      setConnected(true); toast('Dongle conectado');
+    } catch(e){log('❌ '+e.message,'err');device=null;}
+  }
+}
+
+// ============================================================
+//  Send IR
+// ============================================================
+
+async function sendModulated(label, code, proto) {
+  if (!device||sending) return;
+  sending=true;
+  document.getElementById('sendingInd').classList.add('active');
+  try {
+    const frame = (proto==='samsung') ? encodeSamsung(code) : encodeNEC(code);
+    const data = new Uint8Array(frame);
+    const hex = code.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join('');
+
+    await device.transferOut(2, data);
+    log('📤 TX1 '+label+' ['+hex+'] · '+data.length+' bytes · '+proto,'ok');
+
+    await new Promise(r=>setTimeout(r,40));
+    await device.transferOut(2, data);
+    log('📤 TX2 '+label+' · repetición','ok');
+    toast('Enviado: '+label);
+  } catch(e){log('❌ Error TX: '+e.message,'err');}
+  finally{sending=false;document.getElementById('sendingInd').classList.remove('active');}
+}
+
+// ============================================================
+//  UI
+// ============================================================
+
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function log(msg,type=''){const a=document.getElementById('logArea');const l=document.createElement('div');
+  if(type)l.className='log-'+type;const now=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  l.textContent='['+now+'] '+msg;a.appendChild(l);a.scrollTop=a.scrollHeight;}
+
+function buildBrands(){
+  const g=document.getElementById('brandGrid');g.innerHTML='';
+  Object.keys(IR_DB).forEach(k=>{
+    const c=document.createElement('div');c.className='bc'+(k===currentBrand?' active':'');
+    c.textContent=IR_DB[k].name;
+    c.onclick=()=>{currentBrand=k;buildBrands();toast(IR_DB[k].name+' · '+IR_DB[k].proto.toUpperCase());
+    log('Marca: '+IR_DB[k].name+' ('+IR_DB[k].proto+')','info');};
+    g.appendChild(c);
+  });
+}
+
+document.getElementById('remotePad').addEventListener('click',async e=>{
+  const btn=e.target.closest('[data-cmd]');
+  if(!btn||btn.disabled||sending)return;
+  const cmd=btn.dataset.cmd;const brand=IR_DB[currentBrand];
+  if(brand&&brand[cmd]) await sendModulated(brand.name+' '+cmd, brand[cmd], brand.proto);
+});
+
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.rb');if(!btn)return;
+  const r=document.createElement('span');r.className='rip';
+  const rect=btn.getBoundingClientRect();const s=Math.max(rect.width,rect.height)*2;
+  r.style.width=r.style.height=s+'px';
+  r.style.left=(e.clientX-rect.left-s/2)+'px';r.style.top=(e.clientY-rect.top-s/2)+'px';
+  btn.appendChild(r);setTimeout(()=>r.remove(),500);
+});
+
+async function sendManual(){
+  const hex=document.getElementById('manualHex').value.trim().replace(/\s+/g,'');
+  const proto=document.getElementById('manualProto').value;
+  if(hex.length!==8||!/^[0-9a-fA-F]+$/.test(hex)){toast('8 caracteres hex (4 bytes)');return;}
+  const bytes=[parseInt(hex.substr(0,2),16),parseInt(hex.substr(2,2),16),
+    parseInt(hex.substr(4,2),16),parseInt(hex.substr(6,2),16)];
+  await sendModulated('Manual '+hex, bytes, proto);
+}
+
+buildBrands();
+window.addEventListener('DOMContentLoaded',()=>{
+  if(!('usb' in navigator))log('⚠️ WebUSB no disponible. Usa Chrome+HTTPS.','err');
+  else log('✅ WebUSB ok · v3 modulación 38kHz','ok');
+  const nf=encodeNEC([0xE0,0xE0,0x40,0xBF]);
+  log('📊 Frame NEC: '+nf.length+' bytes · '+(nf.length*US_PER_BYTE/1000).toFixed(1)+'ms','info');
+  const sf=encodeSamsung([0xE0,0xE0,0x40,0xBF]);
+  log('📊 Frame Samsung: '+sf.length+' bytes · '+(sf.length*US_PER_BYTE/1000).toFixed(1)+'ms','info');
+});
+window.addEventListener('beforeunload',()=>{if(device)toggleConnection();});
+</script>
+</body>
+</html>

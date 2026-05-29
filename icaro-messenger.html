@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ícaro Messenger — Chat por Dongle IR</title>
+<meta name="theme-color" content="#06060d">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #06060d;
+  --surface: rgba(255,255,255,0.05);
+  --surface-2: rgba(255,255,255,0.08);
+  --surface-3: rgba(255,255,255,0.12);
+  --border: rgba(255,255,255,0.08);
+  --border-2: rgba(255,255,255,0.14);
+  --text: #eaeaf2;
+  --text-dim: #6a6a86;
+  --text-mid: #a0a0b8;
+  --sent: #6366f1;
+  --sent-glow: rgba(99,102,241,0.2);
+  --recv: #059669;
+  --recv-glow: rgba(5,150,105,0.2);
+  --green: #34d399;
+  --green-glow: rgba(52,211,153,0.25);
+  --red: #f87171;
+  --red-glow: rgba(248,113,113,0.25);
+  --orange: #fbbf24;
+  --cyan: #22d3ee;
+  --radius: 18px;
+  --radius-sm: 12px;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Background */
+.bg-orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.bg-orbs span { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.25; }
+.bg-orbs .o1 { width: 280px; height: 280px; background: var(--sent); top: -80px; right: -60px; }
+.bg-orbs .o2 { width: 220px; height: 220px; background: #e11d48; bottom: 20%; left: -60px; }
+
+/* Top Bar */
+.top-bar {
+  position: relative; z-index: 10;
+  background: rgba(6,6,13,0.9);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.top-bar .icon { font-size: 28px; }
+.top-bar .info { flex: 1; }
+.top-bar .title { font-size: 16px; font-weight: 700; }
+.top-bar .status { font-size: 11px; color: var(--text-dim); margin-top: 1px; display: flex; align-items: center; gap: 6px; }
+.top-bar .status-dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+}
+.top-bar .status-dot.off { background: var(--red); }
+.top-bar .status-dot.on { background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.top-bar .conn-btn {
+  padding: 8px 16px; border-radius: 10px; border: 1px solid var(--border-2);
+  background: var(--surface-2); color: var(--text); font-family: 'Outfit';
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.top-bar .conn-btn:active { transform: scale(0.95); }
+.top-bar .conn-btn.connected { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.25); color: var(--red); }
+
+/* Mode selector */
+.mode-bar {
+  position: relative; z-index: 10;
+  background: rgba(6,6,13,0.7);
+  padding: 8px 16px;
+  display: flex; gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.mode-chip {
+  flex: 1; padding: 8px; border-radius: 10px; text-align: center;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-dim); transition: all 0.15s;
+}
+.mode-chip.active {
+  background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.3);
+  color: var(--sent); box-shadow: 0 0 12px rgba(99,102,241,0.1);
+}
+.mode-chip:active { transform: scale(0.97); }
+
+/* Chat Area */
+.chat-area {
+  flex: 1;
+  position: relative; z-index: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scroll-behavior: smooth;
+}
+
+.msg {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  animation: msgIn 0.25s ease;
+}
+@keyframes msgIn { from{opacity:0;transform:translateY(10px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+.msg.sent {
+  align-self: flex-end;
+  background: var(--sent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.msg.recv {
+  align-self: flex-start;
+  background: var(--surface-3);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+  border: 1px solid var(--border-2);
+}
+.msg .msg-meta {
+  font-size: 10px;
+  opacity: 0.6;
+  margin-top: 4px;
+  display: block;
+}
+.msg.recv .msg-meta { color: var(--text-dim); }
+
+.msg.system {
+  align-self: center;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.msg.hex {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+/* Input Area */
+.input-area {
+  position: relative; z-index: 10;
+  background: rgba(6,6,13,0.9);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.input-area textarea {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  max-height: 100px;
+  min-height: 42px;
+  line-height: 1.4;
+}
+.input-area textarea:focus { border-color: var(--sent); }
+.input-area textarea::placeholder { color: var(--text-dim); }
+
+.send-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sent), #818cf8);
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  box-shadow: 0 4px 16px var(--sent-glow);
+}
+.send-btn:active { transform: scale(0.9); }
+.send-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+/* Settings panel */
+.settings-panel {
+  position: relative; z-index: 10;
+  background: rgba(6,6,13,0.95);
+  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+  display: none;
+}
+.settings-panel.show { display: block; }
+.settings-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.settings-row label { font-size: 12px; color: var(--text-dim); font-weight: 500; width: 100px; }
+.settings-row select, .settings-row input[type="text"] {
+  flex: 1; padding: 8px 12px; border-radius: 8px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text); font-family: 'Outfit'; font-size: 13px; outline: none;
+}
+
+.info-box {
+  background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.15);
+  border-radius: 10px; padding: 12px; font-size: 11px;
+  color: var(--text-dim); line-height: 1.6; margin-top: 8px;
+}
+.info-box strong { color: var(--text-mid); }
+</style>
+</head>
+<body>
+
+<div class="bg-orbs"><span class="o1"></span><span class="o2"></span></div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <div class="icon">📡</div>
+  <div class="info">
+    <div class="title">Ícaro Messenger</div>
+    <div class="status">
+      <span class="status-dot off" id="statusDot"></span>
+      <span id="statusLabel">Desconectado</span>
+    </div>
+  </div>
+  <button class="conn-btn" id="btnConn" onclick="toggleConnection()">Conectar</button>
+  <button class="conn-btn" onclick="toggleSettings()" style="padding:8px 10px">⚙️</button>
+</div>
+
+<!-- Mode -->
+<div class="mode-bar">
+  <div class="mode-chip active" id="modeText" onclick="setMode('text')">💬 Texto</div>
+  <div class="mode-chip" id="modeHex" onclick="setMode('hex')">🔧 Hex</div>
+</div>
+
+<!-- Chat -->
+<div class="chat-area" id="chatArea">
+  <div class="msg system">
+    Conecta los dos dongles. Modo cable: TX↔RX cruzado + GND. Modo IR: apuntar LED ↔ sensor.
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-row">
+    <label>Baud rate</label>
+    <select id="selBaud">
+      <option value="9600" selected>9600 (recomendado)</option>
+      <option value="19200">19200</option>
+      <option value="38400">38400</option>
+      <option value="57600">57600</option>
+      <option value="115200">115200</option>
+    </select>
+  </div>
+  <div class="settings-row">
+    <label>Tu nombre</label>
+    <input type="text" id="inputName" value="Alumno" placeholder="Tu nombre">
+  </div>
+  <div class="info-box">
+    <strong>Conexión por cable (más fiable):</strong><br>
+    Conecta TX del dongle A → RX del dongle B, TX de B → RX de A, y GND ↔ GND. Usa 3 cables dupont.<br><br>
+    <strong>Conexión IR (inalámbrica):</strong><br>
+    Apunta el LED IR de un dongle al sensor VS1838B del otro. Alcance limitado, funciona mejor a poca distancia y con poca luz ambiental.
+  </div>
+</div>
+
+<!-- Input -->
+<div class="input-area">
+  <textarea id="inputMsg" placeholder="Escribe un mensaje..." rows="1" disabled></textarea>
+  <button class="send-btn" id="btnSend" disabled onclick="sendMessage()">▶</button>
+</div>
+
+<script>
+// ============================================================
+// CH340G WebUSB
+// ============================================================
+
+const CH340_VID = 0x1A86, CH340_PID = 0x7523;
+let device = null;
+let rxActive = false;
+let mode = 'text'; // 'text' or 'hex'
+let rxBuffer = '';
+let rxTimeout = null;
+
+async function ch340Write(req, val, idx) {
+  await device.controlTransferOut({requestType:'vendor',recipient:'device',request:req,value:val,index:idx});
+}
+
+async function ch340Init(baud) {
+  await ch340Write(0xA1, 0, 0);
+  const rates = {
+    9600:{f:0xB202,d:0x0038}, 19200:{f:0xD902,d:0x0038},
+    38400:{f:0x6403,d:0x0038}, 57600:{f:0x9803,d:0x0038},
+    115200:{f:0xCC03,d:0x0038},
+  };
+  const b = rates[baud] || rates[9600];
+  await ch340Write(0x9A, 0x2518, b.f);
+  await ch340Write(0x9A, 0x0F2C, b.d);
+  await ch340Write(0x9A, 0x2518, 0x00C3);
+  await ch340Write(0xA4, 0x009F, 0);
+}
+
+
+// ============================================================
+// Connection
+// ============================================================
+
+function setConnected(on) {
+  document.getElementById('statusDot').className = 'status-dot ' + (on ? 'on' : 'off');
+  document.getElementById('statusLabel').textContent = on ? `Conectado · ${document.getElementById('selBaud').value} baud` : 'Desconectado';
+  document.getElementById('btnConn').textContent = on ? 'Desconectar' : 'Conectar';
+  document.getElementById('btnConn').className = 'conn-btn' + (on ? ' connected' : '');
+  document.getElementById('inputMsg').disabled = !on;
+  document.getElementById('btnSend').disabled = !on;
+}
+
+async function toggleConnection() { device ? await disconnect() : await connect(); }
+
+async function connect() {
+  if (!('usb' in navigator)) {
+    addSystemMsg('❌ WebUSB no disponible. Usa Chrome en Android con HTTPS.');
+    return;
+  }
+  try {
+    device = await navigator.usb.requestDevice({filters:[{vendorId:CH340_VID,productId:CH340_PID}]});
+    await device.open();
+    if (!device.configuration) await device.selectConfiguration(1);
+    await device.claimInterface(0);
+    
+    const baud = parseInt(document.getElementById('selBaud').value);
+    await ch340Init(baud);
+    
+    setConnected(true);
+    addSystemMsg(`✅ Conectado a ${baud} baud. ¡Listo para chatear!`);
+    
+    // Start listening
+    startRx();
+  } catch(e) {
+    addSystemMsg(`❌ Error: ${e.message}`);
+    device = null;
+  }
+}
+
+async function disconnect() {
+  rxActive = false;
+  try { if(device){await device.releaseInterface(0); await device.close();} } catch(e){}
+  device = null;
+  setConnected(false);
+  addSystemMsg('🔌 Desconectado');
+}
+
+
+// ============================================================
+// Receive
+// ============================================================
+
+async function startRx() {
+  rxActive = true;
+  while (rxActive && device) {
+    try {
+      const result = await device.transferIn(2, 64);
+      if (result.data && result.data.byteLength > 0) {
+        const arr = new Uint8Array(result.data.buffer);
+        
+        if (mode === 'hex') {
+          // Show raw hex
+          const hex = Array.from(arr).map(b => b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+          addMessage(`[${arr.length}B] ${hex}`, 'recv', true);
+        } else {
+          // Accumulate text until pause
+          const text = new TextDecoder().decode(arr);
+          rxBuffer += text;
+          
+          // Reset timer — show message after 100ms of silence
+          clearTimeout(rxTimeout);
+          rxTimeout = setTimeout(() => {
+            if (rxBuffer.trim()) {
+              addMessage(rxBuffer.trim(), 'recv');
+            }
+            rxBuffer = '';
+          }, 100);
+        }
+      }
+    } catch(e) {
+      if (rxActive && !e.message.includes('transfer')) {
+        addSystemMsg(`Error RX: ${e.message}`);
+        break;
+      }
+    }
+  }
+}
+
+
+// ============================================================
+// Send
+// ============================================================
+
+async function sendMessage() {
+  if (!device) return;
+  
+  const input = document.getElementById('inputMsg');
+  const raw = input.value.trim();
+  if (!raw) return;
+
+  try {
+    let bytes;
+    
+    if (mode === 'hex') {
+      // Parse hex input
+      bytes = new Uint8Array(raw.split(/[\s,]+/).map(h => parseInt(h, 16)));
+      if (bytes.some(b => isNaN(b))) throw new Error('Hex inválido');
+      const hexStr = Array.from(bytes).map(b => b.toString(16).toUpperCase().padStart(2,'0')).join(' ');
+      addMessage(`[${bytes.length}B] ${hexStr}`, 'sent', true);
+    } else {
+      // Text mode: add newline as delimiter
+      const name = document.getElementById('inputName').value.trim() || 'Anon';
+      const fullMsg = `${name}: ${raw}\n`;
+      bytes = new TextEncoder().encode(fullMsg);
+      addMessage(raw, 'sent');
+    }
+
+    // Send in chunks
+    const CHUNK = 64;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      await device.transferOut(2, bytes.slice(i, i + CHUNK));
+    }
+
+    input.value = '';
+    autoResize(input);
+  } catch(e) {
+    addSystemMsg(`❌ Error al enviar: ${e.message}`);
+  }
+}
+
+
+// ============================================================
+// Chat UI
+// ============================================================
+
+function addMessage(text, type, isHex = false) {
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = `msg ${type}` + (isHex ? ' hex' : '');
+  
+  const time = new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  
+  if (type === 'sent') {
+    div.innerHTML = `${escHtml(text)}<span class="msg-meta">${time} · Enviado</span>`;
+  } else {
+    div.innerHTML = `${escHtml(text)}<span class="msg-meta">${time} · Recibido</span>`;
+  }
+  
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+  
+  // Limit messages
+  while (area.children.length > 200) area.removeChild(area.firstChild);
+}
+
+function addSystemMsg(text) {
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'msg system';
+  div.textContent = text;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+
+// ============================================================
+// Mode
+// ============================================================
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('modeText').className = 'mode-chip' + (m==='text'?' active':'');
+  document.getElementById('modeHex').className = 'mode-chip' + (m==='hex'?' active':'');
+  document.getElementById('inputMsg').placeholder = m === 'text' ? 'Escribe un mensaje...' : 'Bytes hex (ej: 48 6F 6C 61)';
+  addSystemMsg(m === 'text' ? '💬 Modo texto activado' : '🔧 Modo hex activado — envía bytes crudos');
+}
+
+
+// ============================================================
+// Settings
+// ============================================================
+
+function toggleSettings() {
+  document.getElementById('settingsPanel').classList.toggle('show');
+}
+
+// Baud rate change while connected
+document.getElementById('selBaud').addEventListener('change', async () => {
+  if (device) {
+    const baud = parseInt(document.getElementById('selBaud').value);
+    try {
+      await ch340Init(baud);
+      setConnected(true);
+      addSystemMsg(`⚙️ Baud rate cambiado a ${baud}`);
+    } catch(e) {
+      addSystemMsg(`❌ Error al cambiar baud: ${e.message}`);
+    }
+  }
+});
+
+
+// ============================================================
+// Textarea auto-resize + Enter to send
+// ============================================================
+
+const textarea = document.getElementById('inputMsg');
+
+textarea.addEventListener('input', () => autoResize(textarea));
+
+textarea.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+
+// ============================================================
+// Init
+// ============================================================
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (!('usb' in navigator)) {
+    addSystemMsg('⚠️ WebUSB no disponible. Necesitas Chrome + HTTPS.');
+  }
+});
+
+window.addEventListener('beforeunload', () => { if(device) disconnect(); });
+</script>
+
+</body>
+</html>
