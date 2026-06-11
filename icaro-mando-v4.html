@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Proyecto Ícaro — Mando IR v4</title>
+<meta name="theme-color" content="#08080f">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#08080f;--s1:rgba(255,255,255,0.05);--s2:rgba(255,255,255,0.08);
+--s3:rgba(255,255,255,0.12);--b1:rgba(255,255,255,0.08);--b2:rgba(255,255,255,0.14);
+--t:#eaeaf2;--dim:#7a7a96;--mid:#a0a0b8;--ac:#6366f1;--ac2:#818cf8;
+--aglow:rgba(99,102,241,0.35);--g:#34d399;--gg:rgba(52,211,153,0.25);
+--r:#f87171;--rg:rgba(248,113,113,0.25);--o:#fbbf24;--cy:#22d3ee;
+--rad:18px;--rs:12px}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--t);
+min-height:100dvh;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.bg span{position:absolute;border-radius:50%;filter:blur(90px);opacity:.3}
+.bg .o1{width:320px;height:320px;background:var(--ac);top:-100px;left:-80px;animation:of 14s ease-in-out infinite alternate}
+.bg .o2{width:260px;height:260px;background:#e11d48;bottom:10%;right:-60px;animation:of 18s ease-in-out infinite alternate-reverse}
+@keyframes of{0%{transform:translate(0,0) scale(1)}100%{transform:translate(25px,30px) scale(1.1)}}
+.app{position:relative;z-index:1;max-width:440px;margin:0 auto;padding:16px 16px 100px}
+.nav-bar{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(8,8,15,.85);
+backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--b1);
+display:flex;justify-content:center;padding:0 6px;padding-bottom:env(safe-area-inset-bottom,8px)}
+.nav-btn{flex:1;max-width:84px;display:flex;flex-direction:column;align-items:center;gap:3px;
+padding:10px 2px 8px;background:none;border:none;color:var(--dim);font-family:'Outfit';
+font-size:10px;font-weight:500;cursor:pointer;transition:color .2s}
+.nav-btn .ni{font-size:21px}.nav-btn.active{color:var(--ac2)}.nav-btn:active{transform:scale(.95)}
+.hdr{text-align:center;padding:14px 0 18px}
+.hdr h1{font-size:24px;font-weight:800;letter-spacing:-.5px;
+background:linear-gradient(135deg,#fff,var(--ac2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hdr .sub{font-size:12px;color:var(--dim);margin-top:4px}
+.hdr .badge{display:inline-block;margin-top:6px;padding:3px 10px;border-radius:20px;
+font-size:10px;font-weight:600;background:rgba(52,211,153,.12);color:var(--g);border:1px solid rgba(52,211,153,.2)}
+.conn-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--rs);
+background:var(--s1);border:1px solid var(--b1);margin-bottom:16px;cursor:pointer;transition:background .2s}
+.conn-bar:active{background:var(--s2)}
+.cd{width:10px;height:10px;border-radius:50%;flex-shrink:0;transition:all .3s}
+.cd.off{background:var(--r);box-shadow:0 0 8px var(--rg)}
+.cd.on{background:var(--g);box-shadow:0 0 8px var(--gg);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.cl{font-size:13px;font-weight:500;flex:1}
+.ca{font-size:12px;font-weight:600;color:var(--ac2);padding:6px 14px;border-radius:8px;
+background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2)}
+.page{display:none}.page.active{display:block;animation:fi .25s ease}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--s1);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+border:1px solid var(--b1);border-radius:var(--rad);padding:18px;margin-bottom:14px}
+.ch{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);
+margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.ch .dot{width:7px;height:7px;border-radius:50%;background:var(--ac)}
+.brand-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.bc{padding:10px 4px;border-radius:var(--rs);background:var(--s2);border:1px solid var(--b1);
+text-align:center;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;color:var(--mid)}
+.bc:active{transform:scale(.96)}
+.bc.active{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:var(--ac2);
+box-shadow:0 0 16px rgba(99,102,241,.15)}
+.remote-pad{background:var(--s2);border-radius:var(--rad);padding:20px 16px;
+display:flex;flex-direction:column;align-items:center;gap:16px}
+.rr{display:flex;align-items:center;justify-content:center;gap:12px;width:100%}
+.rb{display:flex;align-items:center;justify-content:center;border:1px solid var(--b2);
+background:var(--s3);color:var(--t);border-radius:14px;font-family:'Outfit';
+font-size:13px;font-weight:600;cursor:pointer;transition:all .12s;position:relative;overflow:hidden}
+.rb:active{transform:scale(.93);background:rgba(99,102,241,.2);border-color:var(--ac)}
+.rb:disabled{opacity:.3;pointer-events:none}
+.rb.power{width:64px;height:64px;border-radius:50%;background:rgba(248,113,113,.12);
+border-color:rgba(248,113,113,.3);color:var(--r);font-size:24px}
+.rb.power:active{background:rgba(248,113,113,.3)}
+.rb.wide{flex:1;height:50px}.rb.circle{width:50px;height:50px;border-radius:50%;font-size:18px}
+.rb .rip{position:absolute;border-radius:50%;background:rgba(255,255,255,.15);
+transform:scale(0);animation:rip .5s ease-out;pointer-events:none}
+@keyframes rip{to{transform:scale(3);opacity:0}}
+.dpad{display:grid;grid-template-areas:". up ." "left ok right" ". down .";
+grid-template-columns:50px 60px 50px;grid-template-rows:50px 60px 50px;gap:4px}
+.dpad .rb{width:100%;height:100%;border-radius:14px}
+.dpad .rb[data-dir=up]{grid-area:up}.dpad .rb[data-dir=down]{grid-area:down}
+.dpad .rb[data-dir=left]{grid-area:left}.dpad .rb[data-dir=right]{grid-area:right}
+.dpad .rb.ok{grid-area:ok;border-radius:50%;background:rgba(99,102,241,.15);
+border-color:rgba(99,102,241,.3);color:var(--ac2);font-weight:700}
+.sl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);text-align:center;width:100%}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.numpad .rb{height:48px;border-radius:var(--rs)}
+.log-area{background:rgba(0,0,0,.35);border-radius:var(--rs);padding:12px;
+font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;max-height:180px;
+overflow-y:auto;color:var(--dim)}
+.log-area .log-ok{color:var(--g)}.log-area .log-err{color:var(--r)}
+.log-area .log-warn{color:var(--o)}.log-area .log-info{color:var(--cy)}
+.tip-box{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.15);
+border-radius:var(--rs);padding:14px;font-size:12px;color:var(--dim);line-height:1.6}
+.tip-box strong{color:var(--t)}
+.btn{width:100%;padding:14px;border:none;border-radius:var(--rs);font-family:'Outfit';
+font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;
+align-items:center;justify-content:center;gap:8px}
+.btn:active{transform:scale(.97)}.btn:disabled{opacity:.35;pointer-events:none}
+.btn-ac{background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;box-shadow:0 4px 20px var(--aglow)}
+.btn-g{background:linear-gradient(135deg,#059669,var(--g));color:#022c22;box-shadow:0 4px 20px var(--gg)}
+.btn-gh{background:var(--s2);color:var(--t);border:1px solid var(--b1)}
+.btn-r{background:rgba(248,113,113,.12);color:var(--r);border:1px solid rgba(248,113,113,.2)}
+input[type=text],select{width:100%;padding:12px 16px;border-radius:var(--rs);background:var(--s2);
+border:1px solid var(--b1);color:var(--t);font-family:'Outfit';font-size:14px;outline:none}
+input[type=text]:focus{border-color:rgba(99,102,241,.4)}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+background:var(--s3);backdrop-filter:blur(20px);border:1px solid var(--b2);
+border-radius:12px;padding:10px 20px;font-size:13px;font-weight:500;color:var(--t);
+z-index:200;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.sending{display:none;align-items:center;gap:8px;justify-content:center;
+padding:8px;color:var(--cy);font-size:12px;font-weight:500}
+.sending.active{display:flex}
+.sending .spin{width:16px;height:16px;border:2px solid var(--b1);
+border-top-color:var(--cy);border-radius:50%;animation:sp .6s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.capture-zone{text-align:center;padding:24px 16px}
+.capture-zone .big{font-size:52px;margin-bottom:10px}
+.capture-zone h3{font-size:16px;font-weight:700;margin-bottom:6px}
+.capture-zone p{font-size:12px;color:var(--dim);line-height:1.5}
+.capture-zone.listening .big{animation:pulse 1s infinite}
+.cap-result{background:var(--s2);border-radius:var(--rs);padding:14px;margin-top:12px;
+font-size:12px;line-height:1.7;display:none}
+.cap-result.show{display:block}
+.cap-result .hex{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--cy)}
+.cap-result .ok-tag{color:var(--g);font-weight:600}
+.cap-result .warn-tag{color:var(--o);font-weight:600}
+.si{display:flex;align-items:center;gap:12px;padding:13px;border-radius:var(--rs);
+background:var(--s2);border:1px solid var(--b1);margin-bottom:8px}
+.si .ic{font-size:26px}.si .inf{flex:1;min-width:0}
+.si .nm{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.si .dt{font-size:10px;color:var(--dim);margin-top:2px;font-family:'JetBrains Mono',monospace}
+.si .acts{display:flex;gap:6px}
+.si .acts button{width:36px;height:36px;border-radius:10px;border:1px solid var(--b1);
+background:var(--s1);color:var(--mid);font-size:15px;cursor:pointer;
+display:flex;align-items:center;justify-content:center}
+.si .acts button:active{transform:scale(.9)}
+.si .acts button:disabled{opacity:.3;pointer-events:none}
+.es{text-align:center;padding:36px 20px;color:var(--dim)}
+.es .ei{font-size:44px;margin-bottom:10px}.es p{font-size:13px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="bg"><span class="o1"></span><span class="o2"></span></div>
+<div class="app">
+  <div class="hdr">
+    <h1>Proyecto Ícaro</h1>
+    <div class="sub">Mando Universal IR · WebUSB</div>
+    <div class="badge">v4 · driver corregido + clonado</div>
+  </div>
+
+  <div class="conn-bar" onclick="toggleConnection()">
+    <span class="cd off" id="connDot"></span>
+    <span class="cl" id="connLabel">Dongle desconectado</span>
+    <span class="ca" id="connAction">Conectar</span>
+  </div>
+
+  <div class="sending" id="sendingInd"><div class="spin"></div><span>Enviando señal IR...</span></div>
+
+  <!-- ============ PAGE: MANDO ============ -->
+  <div class="page active" id="pgMando">
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Marca de TV</div>
+      <div class="brand-grid" id="brandGrid"></div>
+      <div style="font-size:11px;color:var(--dim);text-align:center">Samsung usa protocolo Samsung · el resto NEC</div>
+    </div>
+    <div class="remote-pad" id="remotePad">
+      <div class="rr"><button class="rb power" data-cmd="power" disabled>⏻</button></div>
+      <div class="sl">— Volumen / Canales —</div>
+      <div class="rr">
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;flex:1">
+          <button class="rb wide" data-cmd="vol_up" disabled>🔊 Vol +</button>
+          <button class="rb wide" data-cmd="vol_down" disabled>🔉 Vol −</button>
+        </div>
+        <button class="rb circle" data-cmd="mute" disabled>🔇</button>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:center;flex:1">
+          <button class="rb wide" data-cmd="ch_up" disabled>CH ▲</button>
+          <button class="rb wide" data-cmd="ch_down" disabled>CH ▼</button>
+        </div>
+      </div>
+      <div class="sl">— Navegación —</div>
+      <div class="dpad">
+        <button class="rb" data-dir="up" data-cmd="up" disabled>▲</button>
+        <button class="rb" data-dir="left" data-cmd="left" disabled>◀</button>
+        <button class="rb ok" data-cmd="ok" disabled>OK</button>
+        <button class="rb" data-dir="right" data-cmd="right" disabled>▶</button>
+        <button class="rb" data-dir="down" data-cmd="down" disabled>▼</button>
+      </div>
+      <div class="rr" style="gap:8px">
+        <button class="rb wide" data-cmd="source" disabled>📺 Source</button>
+        <button class="rb wide" data-cmd="menu" disabled>☰ Menú</button>
+        <button class="rb wide" data-cmd="back" disabled>↩ Volver</button>
+      </div>
+      <div class="sl">— Numérico —</div>
+      <div class="numpad">
+        <button class="rb" data-cmd="n1" disabled>1</button><button class="rb" data-cmd="n2" disabled>2</button>
+        <button class="rb" data-cmd="n3" disabled>3</button><button class="rb" data-cmd="n4" disabled>4</button>
+        <button class="rb" data-cmd="n5" disabled>5</button><button class="rb" data-cmd="n6" disabled>6</button>
+        <button class="rb" data-cmd="n7" disabled>7</button><button class="rb" data-cmd="n8" disabled>8</button>
+        <button class="rb" data-cmd="n9" disabled>9</button><button class="rb" data-cmd="info" disabled>ℹ️</button>
+        <button class="rb" data-cmd="n0" disabled>0</button><button class="rb" data-cmd="exit" disabled>✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PAGE: CLONAR ============ -->
+  <div class="page" id="pgClonar">
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Capturar mando real</div>
+      <div class="capture-zone" id="capZone">
+        <div class="big" id="capIcon">📡</div>
+        <h3 id="capTitle">Modo aprendizaje</h3>
+        <p id="capSub">Pulsa "Capturar", apunta un mando real al sensor VS1838B a 2-10 cm y mantén pulsado un botón ~1 segundo.</p>
+      </div>
+      <button class="btn btn-g" id="btnCapture" disabled onclick="startCapture()">👂 Capturar señal</button>
+      <div class="cap-result" id="capResult"></div>
+      <div id="capSaveRow" style="display:none;margin-top:10px">
+        <input type="text" id="capName" placeholder="Nombre (ej: Tele salón · Power)" style="margin-bottom:8px">
+        <button class="btn btn-ac" onclick="saveCapture()">💾 Guardar señal</button>
+      </div>
+    </div>
+    <div class="tip-box">
+      💡 <strong>Cómo funciona:</strong> el VS1838B quita la portadora de 38kHz y entrega la envolvente.
+      El CH340 la muestrea a ~1769 baud (cada bit ≈ 565µs = medio bit NEC), así cada byte recibido
+      es una "fotografía" del patrón de marcas y espacios. La app reconstruye el código de 32 bits
+      y lo verifica con la redundancia del protocolo NEC. Si la verificación falla, se guarda la
+      captura cruda (experimental) — prueba a capturar de nuevo más cerca.
+    </div>
+  </div>
+
+  <!-- ============ PAGE: GUARDADOS ============ -->
+  <div class="page" id="pgGuardados">
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Señales guardadas</div>
+      <div id="savedList"></div>
+    </div>
+    <button class="btn btn-r" id="btnClearAll" style="display:none" onclick="clearAllSaved()">🗑️ Borrar todo</button>
+  </div>
+
+  <!-- ============ PAGE: MANUAL ============ -->
+  <div class="page" id="pgManual">
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Envío manual</div>
+      <p style="font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.5">
+        Código de 32 bits en hex (8 caracteres). Ej: <strong style="color:var(--t)">E0E040BF</strong> (Samsung Power)
+      </p>
+      <input type="text" id="manualHex" placeholder="Ej: 20DF10EF (LG Power)" style="margin-bottom:10px">
+      <select id="manualProto" style="margin-bottom:10px">
+        <option value="nec">Protocolo NEC (header 9ms)</option>
+        <option value="samsung">Protocolo Samsung (header 4.5ms)</option>
+      </select>
+      <button class="btn btn-ac" id="btnManualSend" disabled onclick="sendManual()">📤 Enviar código</button>
+      <div style="margin-top:8px">
+        <button class="btn btn-gh" onclick="saveManual()">💾 Guardar en Guardados</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Códigos de referencia</div>
+      <div class="log-area" style="max-height:190px;font-size:10px">
+        <div class="log-info">— Samsung (proto Samsung) —</div>
+        <div>Power E0E040BF · Vol+ E0E0E01F · Vol- E0E0D02F</div>
+        <div>Mute E0E0F00F · CH+ E0E048B7 · CH- E0E008F7</div>
+        <div class="log-info" style="margin-top:6px">— LG (NEC) —</div>
+        <div>Power 20DF10EF · Vol+ 20DF40BF · Vol- 20DFC03F</div>
+        <div class="log-info" style="margin-top:6px">— Hisense (NEC) —</div>
+        <div>Power 00BF40BF · Vol+ 00BFE01F · Vol- 00BFD02F</div>
+        <div class="log-info" style="margin-top:6px">— Toshiba (NEC) —</div>
+        <div>Power 02FD48B7 · Vol+ 02FD58A7</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PAGE: LOG ============ -->
+  <div class="page" id="pgLog">
+    <div class="card">
+      <div class="ch"><span class="dot"></span> Log de actividad</div>
+      <div class="log-area" id="logArea" style="max-height:50vh"></div>
+    </div>
+    <button class="btn btn-gh" onclick="document.getElementById('logArea').innerHTML=''">🗑️ Limpiar log</button>
+    <div class="tip-box" style="margin-top:10px">
+      💡 <strong>Verificar el LED:</strong> es invisible al ojo. Míralo con la <strong>cámara frontal</strong>
+      de otro móvil: se verá violeta parpadeando al enviar.
+    </div>
+  </div>
+</div>
+
+<nav class="nav-bar">
+  <button class="nav-btn active" onclick="showPage('pgMando',this)"><span class="ni">📺</span>Mando</button>
+  <button class="nav-btn" onclick="showPage('pgClonar',this)"><span class="ni">📡</span>Clonar</button>
+  <button class="nav-btn" onclick="showPage('pgGuardados',this)"><span class="ni">💾</span>Guardados</button>
+  <button class="nav-btn" onclick="showPage('pgManual',this)"><span class="ni">✏️</span>Manual</button>
+  <button class="nav-btn" onclick="showPage('pgLog',this)"><span class="ni">📋</span>Log</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  PROYECTO ÍCARO — MANDO IR v4
+//
+//  · Driver CH340 CORRECTO (como kernel Linux / felHR85):
+//      baud  → ctrl(0x9A, value=0x1312, index=valor_baud)
+//      LCR   → ctrl(0x9A, value=0x2518, index=0x00C3)
+//    (las versiones anteriores escribían el baud en 0x2518,
+//     que es el registro LCR — por eso nada funcionaba)
+//
+//  · Emisión: 76800 baud reales (76923) → byte 0x55 = carrier
+//    38.46kHz. Tramas NEC/Samsung completas con timing exacto.
+//
+//  · Clonado: RX a 1769 baud → cada bit UART ≈ 565µs = medio
+//    bit NEC → cada byte recibido muestrea el patrón de la
+//    señal demodulada. Se reconstruye el código de 32 bits.
+// ============================================================
+
+const CH340_VID = 0x1A86, CH340_PID = 0x7523;
+
+// --- USB requests ---
+const REQ_VERSION = 0x5F, REQ_WRITE_REG = 0x9A, REQ_INIT = 0xA1, REQ_MODEM = 0xA4;
+// --- Selectores de pares de registros (parámetro "value") ---
+const REG_BAUD = 0x1312;   // prescaler 0x12 + divisor 0x13
+const REG_LCR  = 0x2518;   // LCR 0x18 + LCR2 0x25
+const LCR_8N1  = 0x00C3;   // RX on | TX on | 8 bits
+
+// --- Valores de baud (parámetro "index" con REG_BAUD) ---
+// Fórmula CH340: 48MHz / (clk_div(ps) · div) · bit7 = sin buffer
+const BAUD_VAL = {
+  1200:  0xB281,   // div 78, ps1 → 1202 baud
+  1769:  0xCB81,   // div 53, ps1 → 1769 baud (muestreo clonado: bit=565µs)
+  9600:  0xB282,
+  76800: 0xB283,   // div 78, ps3 → 76923 baud → carrier 38.46kHz
+};
+
+// --- Modulación IR ---
+const CARRIER_ON = 0x55, CARRIER_OFF = 0xFF;
+const US_PER_BYTE = 130.0;   // 10 bits / 76923 baud
+const NEC = {
+  hdrMark: 9000, hdrSpace: 4500,
+  bitMark: 562, zeroSpace: 562, oneSpace: 1688, stopMark: 562
+};
+const SAM_HDR = 4500;        // Samsung: header 4.5ms + 4.5ms
+
+// --- Base de datos de códigos (addr, addr2, cmd, cmd_inv · LSB-first) ---
+const IR_DB = {
+  samsung:{name:'Samsung',proto:'samsung',
+    power:[0xE0,0xE0,0x40,0xBF],vol_up:[0xE0,0xE0,0xE0,0x1F],vol_down:[0xE0,0xE0,0xD0,0x2F],
+    ch_up:[0xE0,0xE0,0x48,0xB7],ch_down:[0xE0,0xE0,0x08,0xF7],mute:[0xE0,0xE0,0xF0,0x0F],
+    source:[0xE0,0xE0,0x80,0x7F],menu:[0xE0,0xE0,0x58,0xA7],ok:[0xE0,0xE0,0x16,0xE9],
+    up:[0xE0,0xE0,0x06,0xF9],down:[0xE0,0xE0,0x86,0x79],left:[0xE0,0xE0,0xA6,0x59],
+    right:[0xE0,0xE0,0x46,0xB9],back:[0xE0,0xE0,0x1A,0xE5],exit:[0xE0,0xE0,0xB4,0x4B],
+    info:[0xE0,0xE0,0xF8,0x07],
+    n0:[0xE0,0xE0,0x88,0x77],n1:[0xE0,0xE0,0x20,0xDF],n2:[0xE0,0xE0,0xA0,0x5F],
+    n3:[0xE0,0xE0,0x60,0x9F],n4:[0xE0,0xE0,0x10,0xEF],n5:[0xE0,0xE0,0x90,0x6F],
+    n6:[0xE0,0xE0,0x50,0xAF],n7:[0xE0,0xE0,0x30,0xCF],n8:[0xE0,0xE0,0xB0,0x4F],
+    n9:[0xE0,0xE0,0x70,0x8F]},
+  lg:{name:'LG',proto:'nec',
+    power:[0x20,0xDF,0x10,0xEF],vol_up:[0x20,0xDF,0x40,0xBF],vol_down:[0x20,0xDF,0xC0,0x3F],
+    ch_up:[0x20,0xDF,0x00,0xFF],ch_down:[0x20,0xDF,0x80,0x7F],mute:[0x20,0xDF,0x90,0x6F],
+    source:[0x20,0xDF,0xD0,0x2F],menu:[0x20,0xDF,0xC5,0x3A],ok:[0x20,0xDF,0x22,0xDD],
+    up:[0x20,0xDF,0x02,0xFD],down:[0x20,0xDF,0x82,0x7D],left:[0x20,0xDF,0xE0,0x1F],
+    right:[0x20,0xDF,0x60,0x9F],back:[0x20,0xDF,0x14,0xEB],exit:[0x20,0xDF,0xDA,0x25],
+    info:[0x20,0xDF,0x55,0xAA],
+    n0:[0x20,0xDF,0x08,0xF7],n1:[0x20,0xDF,0x88,0x77],n2:[0x20,0xDF,0x48,0xB7],
+    n3:[0x20,0xDF,0xC8,0x37],n4:[0x20,0xDF,0x28,0xD7],n5:[0x20,0xDF,0xA8,0x57],
+    n6:[0x20,0xDF,0x68,0x97],n7:[0x20,0xDF,0xE8,0x17],n8:[0x20,0xDF,0x18,0xE7],
+    n9:[0x20,0xDF,0x98,0x67]},
+  philips:{name:'Philips',proto:'nec',
+    power:[0x40,0xBF,0x12,0xED],vol_up:[0x40,0xBF,0x10,0xEF],vol_down:[0x40,0xBF,0x11,0xEE],
+    ch_up:[0x40,0xBF,0x20,0xDF],ch_down:[0x40,0xBF,0x21,0xDE],mute:[0x40,0xBF,0x0D,0xF2],
+    source:[0x40,0xBF,0x38,0xC7],menu:[0x40,0xBF,0x54,0xAB],ok:[0x40,0xBF,0x5C,0xA3],
+    up:[0x40,0xBF,0x58,0xA7],down:[0x40,0xBF,0x59,0xA6],left:[0x40,0xBF,0x5A,0xA5],
+    right:[0x40,0xBF,0x5B,0xA4],back:[0x40,0xBF,0x0A,0xF5],exit:[0x40,0xBF,0x0A,0xF5],
+    info:[0x40,0xBF,0x0F,0xF0],
+    n0:[0x40,0xBF,0x00,0xFF],n1:[0x40,0xBF,0x01,0xFE],n2:[0x40,0xBF,0x02,0xFD],
+    n3:[0x40,0xBF,0x03,0xFC],n4:[0x40,0xBF,0x04,0xFB],n5:[0x40,0xBF,0x05,0xFA],
+    n6:[0x40,0xBF,0x06,0xF9],n7:[0x40,0xBF,0x07,0xF8],n8:[0x40,0xBF,0x08,0xF7],
+    n9:[0x40,0xBF,0x09,0xF6]},
+  panasonic:{name:'Panasonic',proto:'nec',
+    power:[0x40,0x04,0x00,0xBD],vol_up:[0x40,0x04,0x00,0x20],vol_down:[0x40,0x04,0x00,0xA0],
+    ch_up:[0x40,0x04,0x00,0x2C],ch_down:[0x40,0x04,0x00,0xAC],mute:[0x40,0x04,0x00,0x30],
+    source:[0x40,0x04,0x00,0xA0],menu:[0x40,0x04,0x00,0x06],ok:[0x40,0x04,0x00,0x49],
+    up:[0x40,0x04,0x00,0x52],down:[0x40,0x04,0x00,0xD2],left:[0x40,0x04,0x00,0x72],
+    right:[0x40,0x04,0x00,0xF2],back:[0x40,0x04,0x00,0x2B],exit:[0x40,0x04,0x00,0xCB],
+    info:[0x40,0x04,0x00,0x39],
+    n0:[0x40,0x04,0x00,0x09],n1:[0x40,0x04,0x00,0x89],n2:[0x40,0x04,0x00,0x49],
+    n3:[0x40,0x04,0x00,0xC9],n4:[0x40,0x04,0x00,0x29],n5:[0x40,0x04,0x00,0xA9],
+    n6:[0x40,0x04,0x00,0x69],n7:[0x40,0x04,0x00,0xE9],n8:[0x40,0x04,0x00,0x19],
+    n9:[0x40,0x04,0x00,0x99]},
+  hisense:{name:'Hisense',proto:'nec',
+    power:[0x00,0xBF,0x40,0xBF],vol_up:[0x00,0xBF,0xE0,0x1F],vol_down:[0x00,0xBF,0xD0,0x2F],
+    ch_up:[0x00,0xBF,0x48,0xB7],ch_down:[0x00,0xBF,0x08,0xF7],mute:[0x00,0xBF,0xF0,0x0F],
+    source:[0x00,0xBF,0x80,0x7F],menu:[0x00,0xBF,0x58,0xA7],ok:[0x00,0xBF,0x16,0xE9],
+    up:[0x00,0xBF,0x06,0xF9],down:[0x00,0xBF,0x86,0x79],left:[0x00,0xBF,0xA6,0x59],
+    right:[0x00,0xBF,0x46,0xB9],back:[0x00,0xBF,0x1A,0xE5],exit:[0x00,0xBF,0xB4,0x4B],
+    info:[0x00,0xBF,0xF8,0x07],
+    n0:[0x00,0xBF,0x88,0x77],n1:[0x00,0xBF,0x20,0xDF],n2:[0x00,0xBF,0xA0,0x5F],
+    n3:[0x00,0xBF,0x60,0x9F],n4:[0x00,0xBF,0x10,0xEF],n5:[0x00,0xBF,0x90,0x6F],
+    n6:[0x00,0xBF,0x50,0xAF],n7:[0x00,0xBF,0x30,0xCF],n8:[0x00,0xBF,0xB0,0x4F],
+    n9:[0x00,0xBF,0x70,0x8F]},
+  tcl:{name:'TCL/Roku',proto:'nec',
+    power:[0x57,0xE3,0x40,0xBF],vol_up:[0x57,0xE3,0xE0,0x1F],vol_down:[0x57,0xE3,0xD0,0x2F],
+    ch_up:[0x57,0xE3,0x48,0xB7],ch_down:[0x57,0xE3,0x08,0xF7],mute:[0x57,0xE3,0xF0,0x0F],
+    source:[0x57,0xE3,0x80,0x7F],menu:[0x57,0xE3,0x58,0xA7],ok:[0x57,0xE3,0x16,0xE9],
+    up:[0x57,0xE3,0x06,0xF9],down:[0x57,0xE3,0x86,0x79],left:[0x57,0xE3,0xA6,0x59],
+    right:[0x57,0xE3,0x46,0xB9],back:[0x57,0xE3,0x1A,0xE5],exit:[0x57,0xE3,0xB4,0x4B],
+    info:[0x57,0xE3,0xF8,0x07],
+    n0:[0x57,0xE3,0x88,0x77],n1:[0x57,0xE3,0x20,0xDF],n2:[0x57,0xE3,0xA0,0x5F],
+    n3:[0x57,0xE3,0x60,0x9F],n4:[0x57,0xE3,0x10,0xEF],n5:[0x57,0xE3,0x90,0x6F],
+    n6:[0x57,0xE3,0x50,0xAF],n7:[0x57,0xE3,0x30,0xCF],n8:[0x57,0xE3,0xB0,0x4F],
+    n9:[0x57,0xE3,0x70,0x8F]},
+  toshiba:{name:'Toshiba',proto:'nec',
+    power:[0x02,0xFD,0x48,0xB7],vol_up:[0x02,0xFD,0x58,0xA7],vol_down:[0x02,0xFD,0x78,0x87],
+    ch_up:[0x02,0xFD,0xD8,0x27],ch_down:[0x02,0xFD,0xF8,0x07],mute:[0x02,0xFD,0x08,0xF7],
+    source:[0x02,0xFD,0x28,0xD7],menu:[0x02,0xFD,0xC8,0x37],ok:[0x02,0xFD,0x98,0x67],
+    up:[0x02,0xFD,0x18,0xE7],down:[0x02,0xFD,0x9A,0x65],left:[0x02,0xFD,0xDA,0x25],
+    right:[0x02,0xFD,0x5A,0xA5],back:[0x02,0xFD,0xA8,0x57],exit:[0x02,0xFD,0xA8,0x57],
+    info:[0x02,0xFD,0xE8,0x17],
+    n0:[0x02,0xFD,0x00,0xFF],n1:[0x02,0xFD,0x80,0x7F],n2:[0x02,0xFD,0x40,0xBF],
+    n3:[0x02,0xFD,0xC0,0x3F],n4:[0x02,0xFD,0x20,0xDF],n5:[0x02,0xFD,0xA0,0x5F],
+    n6:[0x02,0xFD,0x60,0x9F],n7:[0x02,0xFD,0xE0,0x1F],n8:[0x02,0xFD,0x10,0xEF],
+    n9:[0x02,0xFD,0x90,0x6F]}
+};
+
+// ============================================================
+//  ENCODER NEC / SAMSUNG → bytes 0x55/0xFF a 76800 baud
+// ============================================================
+
+function fillUs(arr, byte, us) {
+  const n = Math.round(us / US_PER_BYTE);
+  for (let i=0;i<n;i++) arr.push(byte);
+}
+
+function encodeFrame(code, proto) {
+  const buf = [];
+  if (proto === 'samsung') {
+    fillUs(buf, CARRIER_ON, SAM_HDR); fillUs(buf, CARRIER_OFF, SAM_HDR);
+  } else {
+    fillUs(buf, CARRIER_ON, NEC.hdrMark); fillUs(buf, CARRIER_OFF, NEC.hdrSpace);
+  }
+  for (let bi=0; bi<4; bi++) {
+    for (let i=0; i<8; i++) {
+      const bit = (code[bi] >> i) & 1;            // LSB first
+      fillUs(buf, CARRIER_ON, NEC.bitMark);
+      fillUs(buf, CARRIER_OFF, bit ? NEC.oneSpace : NEC.zeroSpace);
+    }
+  }
+  fillUs(buf, CARRIER_ON, NEC.stopMark);
+  return new Uint8Array(buf);
+}
+
+// ============================================================
+//  DRIVER CH340 (corregido)
+// ============================================================
+
+let device = null, epIn = 2, epOut = 2;
+let currentBaud = 0, currentBrand = 'samsung', sending = false;
+let rxRunning = false, capturing = false;
+let capBytes = [], capTimer = null, pendingCapture = null;
+
+async function ctrlOut(request, value, index) {
+  const r = await device.controlTransferOut(
+    {requestType:'vendor', recipient:'device', request, value, index});
+  if (r.status !== 'ok') throw new Error('ctrl '+r.status);
+}
+async function ctrlIn(request, value, index, len) {
+  const r = await device.controlTransferIn(
+    {requestType:'vendor', recipient:'device', request, value, index}, len);
+  return new Uint8Array(r.data ? r.data.buffer : []);
+}
+
+async function setBaud(baud) {
+  const v = BAUD_VAL[baud];
+  if (v === undefined) throw new Error('Baud no soportado: '+baud);
+  await ctrlOut(REQ_WRITE_REG, REG_BAUD, v);
+  currentBaud = baud;
+}
+
+async function ch340Init(baud) {
+  try { const ver = await ctrlIn(REQ_VERSION, 0, 0, 2);
+    log('🏷️ Chip CH340 versión 0x'+ver[0].toString(16).toUpperCase(),'info');
+  } catch(e) { log('⚠️ READ_VERSION: '+e.message,'warn'); }
+  await ctrlOut(REQ_INIT, 0, 0);            // serial init
+  await setBaud(baud);                       // ← registro 0x1312 (CORRECTO)
+  await ctrlOut(REQ_WRITE_REG, REG_LCR, LCR_8N1);  // ← 0x2518 solo para LCR
+  await ctrlOut(REQ_MODEM, 0xFF9F, 0);      // DTR+RTS
+}
+
+function discoverEndpoints() {
+  try {
+    const alt = device.configuration.interfaces[0].alternate;
+    for (const ep of alt.endpoints) {
+      if (ep.type === 'bulk' && ep.direction === 'in')  epIn  = ep.endpointNumber;
+      if (ep.type === 'bulk' && ep.direction === 'out') epOut = ep.endpointNumber;
+    }
+    log('🔗 Endpoints bulk: IN #'+epIn+' · OUT #'+epOut,'info');
+  } catch(e) { log('⚠️ endpoints: usando #2 por defecto','warn'); }
+}
+
+// ============================================================
+//  Conexión
+// ============================================================
+
+function setConnected(on) {
+  document.getElementById('connDot').className = 'cd '+(on?'on':'off');
+  document.getElementById('connLabel').textContent = on
+    ? 'Dongle conectado · '+currentBaud+' baud' : 'Dongle desconectado';
+  document.getElementById('connAction').textContent = on?'Desconectar':'Conectar';
+  document.querySelectorAll('.rb[data-cmd]').forEach(b=>b.disabled=!on);
+  document.getElementById('btnManualSend').disabled = !on;
+  document.getElementById('btnCapture').disabled = !on;
+  renderSaved();
+}
+
+async function toggleConnection() {
+  if (device) {
+    rxRunning = false; capturing = false;
+    try { await device.releaseInterface(0); await device.close(); } catch(e){}
+    device = null;
+    log('🔌 Desconectado','warn'); setConnected(false); toast('Desconectado');
+  } else {
+    if (!('usb' in navigator)) {
+      log('❌ WebUSB no disponible — usa Chrome (no Samsung Internet) + HTTPS','err');
+      toast('Necesitas Chrome en Android'); return;
+    }
+    try {
+      device = await navigator.usb.requestDevice({filters:[{vendorId:CH340_VID,productId:CH340_PID}]});
+      await device.open();
+      if (!device.configuration) await device.selectConfiguration(1);
+      await device.claimInterface(0);
+      discoverEndpoints();
+      await ch340Init(76800);
+      log('✅ CH340 listo · 76800 baud · carrier 38.46kHz','ok');
+      setConnected(true); toast('Dongle conectado');
+      startRxLoop();
+    } catch(e) {
+      log('❌ '+e.message,'err'); device = null;
+    }
+  }
+}
+
+// ============================================================
+//  TX — enviar señal IR
+// ============================================================
+
+async function sendIR(label, code, proto) {
+  if (!device || sending) return;
+  sending = true;
+  document.getElementById('sendingInd').classList.add('active');
+  try {
+    if (currentBaud !== 76800) await setBaud(76800);
+    const frame = encodeFrame(code, proto);
+    const hex = code.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join('');
+    await device.transferOut(epOut, frame);
+    await new Promise(r=>setTimeout(r, 45));
+    await device.transferOut(epOut, frame);   // repetición ×2 para fiabilidad
+    log('📤 '+label+' ['+hex+'] · '+frame.length+'B ×2 · '+proto.toUpperCase(),'ok');
+    toast('Enviado: '+label);
+  } catch(e) {
+    log('❌ TX: '+e.message,'err');
+  } finally {
+    sending = false;
+    document.getElementById('sendingInd').classList.remove('active');
+  }
+}
+
+async function sendRawSlots(label, slots) {
+  // Reproduce una captura cruda: cada slot ≈ 565µs de carrier ON/OFF
+  if (!device || sending) return;
+  sending = true;
+  document.getElementById('sendingInd').classList.add('active');
+  try {
+    if (currentBaud !== 76800) await setBaud(76800);
+    const out = []; let err = 0;
+    const SLOT_US = 565.3;
+    for (const s of slots) {
+      const exact = SLOT_US / US_PER_BYTE + err;
+      const n = Math.round(exact); err = exact - n;
+      for (let k=0;k<n;k++) out.push(s===0 ? CARRIER_ON : CARRIER_OFF);
+    }
+    const frame = new Uint8Array(out);
+    await device.transferOut(epOut, frame);
+    await new Promise(r=>setTimeout(r,45));
+    await device.transferOut(epOut, frame);
+    log('📤 '+label+' (RAW '+slots.length+' slots → '+frame.length+'B) ×2','ok');
+    toast('Enviado: '+label);
+  } catch(e) { log('❌ TX raw: '+e.message,'err'); }
+  finally {
+    sending = false;
+    document.getElementById('sendingInd').classList.remove('active');
+  }
+}
+
+// ============================================================
+//  RX — bucle persistente (alimenta el modo clonado)
+// ============================================================
+
+async function startRxLoop() {
+  if (rxRunning) return;
+  rxRunning = true;
+  while (rxRunning && device) {
+    try {
+      const res = await device.transferIn(epIn, 64);
+      if (res.data && res.data.byteLength > 0) {
+        const arr = new Uint8Array(res.data.buffer);
+        if (capturing) {
+          for (const b of arr) capBytes.push(b);
+          // reinicia el temporizador de silencio: fin de señal a los 350ms
+          if (capTimer) clearTimeout(capTimer);
+          capTimer = setTimeout(finishCapture, 350);
+        }
+      }
+    } catch(e) {
+      if (!rxRunning || !device) break;
+      try { await device.clearHalt('in', epIn); } catch(e2) {}
+      await new Promise(r=>setTimeout(r,50));
+    }
+  }
+  rxRunning = false;
+}
+
+// ============================================================
+//  CLONADO — captura a 1769 baud y decodificación NEC
+// ============================================================
+
+async function startCapture() {
+  if (!device || capturing) return;
+  pendingCapture = null;
+  document.getElementById('capResult').classList.remove('show');
+  document.getElementById('capSaveRow').style.display = 'none';
+  capBytes = [];
+  try {
+    await setBaud(1769);
+    capturing = true;
+    document.getElementById('capZone').classList.add('listening');
+    document.getElementById('capIcon').textContent = '👂';
+    document.getElementById('capTitle').textContent = 'Escuchando...';
+    document.getElementById('capSub').textContent =
+      'Apunta el mando al sensor (2-10 cm) y pulsa un botón. La captura termina sola.';
+    document.getElementById('btnCapture').disabled = true;
+    log('👂 Captura iniciada · RX a 1769 baud (slot 565µs)','info');
+    // timeout global de 8s si no llega nada
+    capTimer = setTimeout(finishCapture, 8000);
+  } catch(e) {
+    log('❌ '+e.message,'err'); capturing = false;
+  }
+}
+
+async function finishCapture() {
+  if (!capturing) return;
+  capturing = false;
+  if (capTimer) { clearTimeout(capTimer); capTimer = null; }
+  document.getElementById('capZone').classList.remove('listening');
+  document.getElementById('capIcon').textContent = '📡';
+  document.getElementById('capTitle').textContent = 'Modo aprendizaje';
+  document.getElementById('btnCapture').disabled = !device;
+  try { await setBaud(76800); } catch(e) {}
+
+  const bytes = capBytes.slice();
+  log('📥 Captura: '+bytes.length+' bytes','info');
+
+  if (bytes.length < 4) {
+    document.getElementById('capSub').textContent =
+      'No se detectó señal. Acerca más el mando (2-10 cm) y mantén el botón pulsado.';
+    log('⚠️ Captura vacía o demasiado corta','warn');
+    return;
+  }
+
+  const result = analyzeCapture(bytes);
+  pendingCapture = result;
+
+  const box = document.getElementById('capResult');
+  let html = '<div>📦 '+bytes.length+' bytes capturados · '+result.slots.length+' slots de 565µs</div>';
+  if (result.code) {
+    const hex = result.code.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join('');
+    html += '<div style="margin-top:6px">Código 32 bits: <span class="hex">'+hex+'</span></div>';
+    html += '<div>Protocolo estimado: <strong>'+result.proto.toUpperCase()+'</strong></div>';
+    html += result.valid
+      ? '<div class="ok-tag">✅ Verificación NEC correcta (cmd ⊕ cmd_inv = FF)</div>'
+      : '<div class="warn-tag">⚠️ Verificación fallida — se guardará también la captura cruda</div>';
+  } else {
+    html += '<div class="warn-tag">⚠️ No se pudo decodificar a 32 bits — se guardará la captura cruda (experimental)</div>';
+  }
+  box.innerHTML = html;
+  box.classList.add('show');
+  document.getElementById('capSaveRow').style.display = '';
+  document.getElementById('capSub').textContent = 'Revisa el resultado y ponle un nombre para guardarlo.';
+  log(result.code
+    ? '🔎 Decodificado: '+result.code.map(b=>b.toString(16).padStart(2,'0')).join('')+' · '+result.proto+(result.valid?' · válido':' · sin verificar')
+    : '🔎 Sin decodificar — solo captura cruda', result.valid?'ok':'warn');
+}
+
+function analyzeCapture(bytes) {
+  // 1. Bytes → línea de tiempo en slots de 565µs
+  //    start bit = marca (LOW=0); 8 bits de datos muestrean la línea;
+  //    stop = suposición de espacio (HIGH=1)
+  const slots = [];
+  for (const b of bytes) {
+    slots.push(0);
+    for (let i=0;i<8;i++) slots.push((b>>i)&1);
+    slots.push(1);
+  }
+  // 2. Codificación run-length
+  const runs = [];
+  for (const s of slots) {
+    if (runs.length && runs[runs.length-1].v === s) runs[runs.length-1].n++;
+    else runs.push({v:s, n:1});
+  }
+  // 3. Localizar header (marca larga ≥6 slots) y saltarlo
+  let i = 0, hdrSlots = 0;
+  for (; i<runs.length; i++) {
+    if (runs[i].v===0 && runs[i].n>=6) { hdrSlots = runs[i].n; i++; break; }
+  }
+  if (!hdrSlots) i = 0;
+  // 4. Avanzar hasta la primera marca corta (inicio de bits)
+  while (i<runs.length && !(runs[i].v===0 && runs[i].n<=3)) i++;
+  // 5. Cada run de espacio tras una marca = un bit (1 slot→0, ≥3→1)
+  const bits = [];
+  for (; i<runs.length && bits.length<32; i++) {
+    if (runs[i].v===1) bits.push(runs[i].n>=3 ? 1 : 0);
+  }
+  let code = null, valid = false, proto = 'nec';
+  if (bits.length >= 32) {
+    code = [0,0,0,0];
+    for (let by=0;by<4;by++)
+      for (let bi=0;bi<8;bi++)
+        code[by] |= bits[by*8+bi] << bi;
+    valid = ((code[2] ^ code[3]) === 0xFF);          // redundancia NEC
+    proto = ((code[0] ^ code[1]) === 0xFF) ? 'nec' : 'samsung';
+  }
+  return {bytes, slots, code, valid, proto};
+}
+
+function saveCapture() {
+  if (!pendingCapture) return;
+  const name = document.getElementById('capName').value.trim() || 'Señal '+new Date().toLocaleTimeString('es-ES');
+  const saved = getSaved();
+  if (pendingCapture.code) {
+    saved.push({name, type:'code', code:pendingCapture.code, proto:pendingCapture.proto,
+      valid:pendingCapture.valid, date:new Date().toISOString()});
+  } else {
+    saved.push({name, type:'raw', slots:pendingCapture.slots, date:new Date().toISOString()});
+  }
+  localStorage.setItem('icaro_v4', JSON.stringify(saved));
+  document.getElementById('capName').value = '';
+  document.getElementById('capSaveRow').style.display = 'none';
+  document.getElementById('capResult').classList.remove('show');
+  document.getElementById('capSub').textContent = 'Guardado ✓ — está en la pestaña Guardados.';
+  pendingCapture = null;
+  toast('Guardado: '+name);
+  log('💾 Guardado: '+name,'ok');
+}
+
+// ============================================================
+//  GUARDADOS (localStorage)
+// ============================================================
+
+function getSaved() {
+  try { return JSON.parse(localStorage.getItem('icaro_v4')||'[]'); } catch { return []; }
+}
+
+function renderSaved() {
+  const list = document.getElementById('savedList');
+  const saved = getSaved();
+  const btn = document.getElementById('btnClearAll');
+  if (!saved.length) {
+    list.innerHTML = '<div class="es"><div class="ei">📦</div><p>No hay señales guardadas.<br>Clona un mando o guarda un código manual.</p></div>';
+    btn.style.display = 'none'; return;
+  }
+  btn.style.display = '';
+  list.innerHTML = saved.map((s,i)=>{
+    let dt;
+    if (s.type === 'code') {
+      const hex = s.code.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join('');
+      dt = hex+' · '+s.proto.toUpperCase()+(s.valid===false?' · sin verificar':'');
+    } else {
+      dt = 'RAW · '+s.slots.length+' slots · experimental';
+    }
+    return '<div class="si"><div class="ic">'+(s.type==='code'?'📡':'🧪')+'</div>'+
+      '<div class="inf"><div class="nm">'+escH(s.name)+'</div><div class="dt">'+dt+'</div></div>'+
+      '<div class="acts">'+
+      '<button onclick="playSaved('+i+')" '+(!device?'disabled':'')+'>▶</button>'+
+      (s.type==='code' ? '<button onclick="toggleProto('+i+')" title="Cambiar protocolo">🔁</button>' : '')+
+      '<button onclick="delSaved('+i+')">🗑</button>'+
+      '</div></div>';
+  }).join('');
+}
+
+async function playSaved(i) {
+  const s = getSaved()[i];
+  if (!s) return;
+  if (s.type === 'code') await sendIR(s.name, s.code, s.proto);
+  else await sendRawSlots(s.name, s.slots);
+}
+
+function toggleProto(i) {
+  const saved = getSaved();
+  if (!saved[i] || saved[i].type!=='code') return;
+  saved[i].proto = saved[i].proto==='nec' ? 'samsung' : 'nec';
+  localStorage.setItem('icaro_v4', JSON.stringify(saved));
+  renderSaved();
+  toast('Protocolo → '+saved[i].proto.toUpperCase());
+}
+
+function delSaved(i) {
+  const saved = getSaved(); saved.splice(i,1);
+  localStorage.setItem('icaro_v4', JSON.stringify(saved));
+  renderSaved(); toast('Eliminado');
+}
+
+function clearAllSaved() {
+  if (confirm('¿Borrar TODAS las señales guardadas?')) {
+    localStorage.removeItem('icaro_v4'); renderSaved(); toast('Borrado');
+  }
+}
+
+// ============================================================
+//  Manual
+// ============================================================
+
+function parseManual() {
+  const hex = document.getElementById('manualHex').value.trim().replace(/[\s,]+/g,'');
+  if (hex.length!==8 || !/^[0-9a-fA-F]+$/.test(hex)) throw new Error('Necesito 8 caracteres hex');
+  return [parseInt(hex.substr(0,2),16),parseInt(hex.substr(2,2),16),
+          parseInt(hex.substr(4,2),16),parseInt(hex.substr(6,2),16)];
+}
+
+async function sendManual() {
+  try {
+    const code = parseManual();
+    const proto = document.getElementById('manualProto').value;
+    await sendIR('Manual', code, proto);
+  } catch(e) { toast(e.message); }
+}
+
+function saveManual() {
+  try {
+    const code = parseManual();
+    const proto = document.getElementById('manualProto').value;
+    const hex = code.map(b=>b.toString(16).toUpperCase().padStart(2,'0')).join('');
+    const name = prompt('Nombre para este código:', 'Manual '+hex) || 'Manual '+hex;
+    const saved = getSaved();
+    saved.push({name, type:'code', code, proto, valid:true, date:new Date().toISOString()});
+    localStorage.setItem('icaro_v4', JSON.stringify(saved));
+    renderSaved(); toast('Guardado');
+  } catch(e) { toast(e.message); }
+}
+
+// ============================================================
+//  UI
+// ============================================================
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (id==='pgGuardados') renderSaved();
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function log(msg, type) {
+  const a = document.getElementById('logArea');
+  const l = document.createElement('div');
+  if (type) l.className = 'log-'+type;
+  l.textContent = '['+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+'] '+msg;
+  a.appendChild(l); a.scrollTop = a.scrollHeight;
+}
+
+function escH(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function buildBrands() {
+  const g = document.getElementById('brandGrid'); g.innerHTML = '';
+  Object.keys(IR_DB).forEach(k=>{
+    const c = document.createElement('div');
+    c.className = 'bc'+(k===currentBrand?' active':'');
+    c.textContent = IR_DB[k].name;
+    c.onclick = ()=>{
+      currentBrand = k; buildBrands();
+      toast(IR_DB[k].name+' · '+IR_DB[k].proto.toUpperCase());
+    };
+    g.appendChild(c);
+  });
+}
+
+document.getElementById('remotePad').addEventListener('click', e=>{
+  const b = e.target.closest('[data-cmd]');
+  if (!b || b.disabled || sending) return;
+  const brand = IR_DB[currentBrand];
+  if (brand && brand[b.dataset.cmd])
+    sendIR(brand.name+' '+b.dataset.cmd, brand[b.dataset.cmd], brand.proto);
+});
+
+document.addEventListener('click', e=>{
+  const b = e.target.closest('.rb'); if (!b) return;
+  const r = document.createElement('span'); r.className = 'rip';
+  const rect = b.getBoundingClientRect(), s = Math.max(rect.width,rect.height)*2;
+  r.style.width = r.style.height = s+'px';
+  r.style.left = (e.clientX-rect.left-s/2)+'px';
+  r.style.top = (e.clientY-rect.top-s/2)+'px';
+  b.appendChild(r); setTimeout(()=>r.remove(),500);
+});
+
+// Init
+buildBrands();
+renderSaved();
+log('→ Mando IR v4 · driver CH340 corregido (baud→0x1312)','info');
+log('→ Carrier real 38.46kHz · clonado por muestreo a 1769 baud','info');
+if (!('usb' in navigator)) log('⚠️ WebUSB no disponible — Chrome + HTTPS','err');
+window.addEventListener('beforeunload',()=>{rxRunning=false;capturing=false;
+  if(device)try{device.releaseInterface(0);device.close();}catch(e){}});
+</script>
+</body>
+</html>
